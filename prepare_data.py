@@ -2,12 +2,10 @@
 
 import numpy as np
 import math
-import numpy.linalg as nla
 from time import time
-
-import cupy as cp
-import cupy.linalg as cla
 from numba import cuda
+
+from make_ellipse import make_nested_ellipses
 
 def  weighted_outer_sum( array, vector, a,b):
     return np.add.outer(a*array,b*vector)
@@ -136,4 +134,28 @@ def convert(image):
     y=np.array(y)
     mass=np.array(mass)
     return (x,y),mass
-            
+
+def prepare_input(k=0,size=60,N=10,seed=20):
+    sample_number = 3*N
+    width = size
+    ellipses = make_nested_ellipses(width, sample_number, seed=seed)
+
+    
+    
+    n=3        
+    supports_list=list()
+    for i in range(3*k,3*k+3):
+        supports_list.append(convert_support(ellipses[i]))
+    weight=list(np.ones(n)/n)
+    support=compute_support(supports_list,weight)
+    mass=list()
+    for i in range(3*k,3*k+3):
+        mass.append(convert_mass(ellipses[i])/convert_mass(ellipses[i]).sum())
+    p,q,s=mass
+    p_s,q_s,s_s=supports_list
+    C=cost_tensor(p_s,q_s,s_s)
+
+    return C,p,q,s
+
+    
+    
