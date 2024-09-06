@@ -35,7 +35,7 @@ def main(max_iter):
         B=solve_rrsinkhorn(Cost, target_mu, epsilon=1, max_iter=max_iter)
         C=solve_multi_greenkhorn(Cost, target_mu, epsilon=1, max_iter=max_iter)
         print('===============================')
-        print(f'Ep=10**{i}finish')
+        print(f'Ep=10**{i} finished')
         Results={'M':M,'A':A,'B':B,'C':C}
         for Result in Results:
             save_folder=output_folder+f'/{Result}-{max_iter}'
