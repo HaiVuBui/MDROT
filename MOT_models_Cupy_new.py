@@ -128,7 +128,7 @@ def solve_lp(costs, target_mu):
     res = linprog(c, A_eq=A, b_eq=target_mu, bounds=[0, 1])
     return res.fun, res.x.reshape(shape)
 
-def solve_multi_sinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, verbose = 0, epsilon_scale_num = 0.99, epsilon_scale_gap = 100, cost_scale = 1, iter_gap = 100, max_iter = 5000, out_dir = 'test'):
+def solve_multi_sinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, verbose = 0, epsilon_scale_num = 1, epsilon_scale_gap = 100, cost_scale = 1, iter_gap = 100, max_iter = 5000, out_dir = 'test'):
     """solve using Sinkhorn's algorithm
 
     Args:
@@ -154,7 +154,8 @@ def solve_multi_sinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, ve
         Lin, Tianyi et al. (2022). “On the complexity of approximating multimarginal optimal transport”. In: The Journal of Machine Learning Research 23.1, pp. 2835–2877.
     """
     ########## initialization ###########
-    
+    costs = cp.asarray(costs)
+    target_mu=cp.asarray(target_mu)
     costs /= cost_scale
     shape = costs.shape
     M = len(shape)
@@ -168,8 +169,8 @@ def solve_multi_sinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, ve
     # B = A_stable / np.sum(np.abs(A_stable))
     iter = 0
 
-    costs = cp.asarray(costs)
-    eta = cp.asarray(eta)
+    
+    # eta = cp.asarray(eta)
     
     obj_list = []
     lb_list = []
@@ -231,7 +232,7 @@ def solve_multi_sinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, ve
         B = cp.exp(tensor_sum(m) - eta * costs)
         distance = dist(B)
         # primal objective
-        obj = cp.sum(projection(B, target_mu) * costs) * cost_scale
+        obj = cp.asnumpy(cp.sum(projection(B, target_mu) * costs) * cost_scale).item()
         # lower bound
         lb = cp.sum(cp.asarray([cp.sum(get_marginal_k(target_mu, k, shape) * m[k]) for k in range(M)])) * cost_scale / eta
 
@@ -297,10 +298,14 @@ def solve_multi_sinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, ve
     weights = projection(B, target_mu)
     lb = cp.sum(cp.asarray([cp.sum(get_marginal_k(target_mu, k, shape) * m[k]) for k in range(M)])) * cost_scale / eta
     
-    return cp.sum(weights * costs) * cost_scale, lb, weights, end-start
+    return {'Obj':np.sum(weights * costs) * cost_scale,
+            'X': weights,
+            'Obj_list':cp.asnumpy(obj_list)
+            }
 
 
-def solve_rrsinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, verbose = 0, epsilon_scale_num = 0.99, epsilon_scale_gap = 100, cost_scale = 1, iter_gap = 100, max_iter = 5000, out_dir = 'test'):
+
+def solve_rrsinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, verbose = 0, epsilon_scale_num = 1, epsilon_scale_gap = 100, cost_scale = 1, iter_gap = 100, max_iter = 5000, out_dir = 'test'):
     """solve using Sinkhorn's algorithm in a round robin fashion
 
     Args:
@@ -326,7 +331,8 @@ def solve_rrsinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, verbos
         Lin, Tianyi et al. (2022). “On the complexity of approximating multimarginal optimal transport”. In: The Journal of Machine Learning Research 23.1, pp. 2835–2877.
     """
     ########## initialization ###########
-    
+    costs=cp.asarray(costs)
+    target_mu=cp.asarray(target_mu)
     costs /= cost_scale
     shape = costs.shape
     M = len(shape)
@@ -339,9 +345,6 @@ def solve_rrsinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, verbos
     # B = A_stable / np.sum(np.abs(A_stable))
     iter = 0
     
-    costs = cp.asarray(costs)
-    eta = cp.asarray(eta)
-
     obj_list = []
     lb_list = []
     eps_list = []
@@ -368,14 +371,14 @@ def solve_rrsinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, verbos
             m[k] += cp.log(get_marginal_k(target_mu, k, shape)) - cp.log(sum_result) - tmp_max
     
     ########## training starts ###########
-    
+    start=time()
     while True:
     # while iter < 500:
         stable_update()
         B = cp.exp(tensor_sum(m) - eta * costs)
         distance = dist(B)
         # primal objective
-        obj = cp.sum(projection(B, target_mu) * costs) * cost_scale
+        obj = cp.asnumpy(cp.sum(projection(B, target_mu) * costs) * cost_scale).item()
         # lower bound
         lb = cp.sum(cp.asarray([cp.sum(get_marginal_k(target_mu, k, shape) * m[k]) for k in range(M)])) * cost_scale / eta
         
@@ -434,18 +437,21 @@ def solve_rrsinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, verbos
                 epsilon_prime *= scale_factor
                 eta /= scale_factor
                 m = [l / scale_factor for l in m]
-    
+    end=time()
     ########## return final results ###########
     
     B = cp.exp(tensor_sum(m) - eta * costs)
     weights = projection(B, target_mu)
     lb = cp.sum(cp.asarray([cp.sum(get_marginal_k(target_mu, k, shape) * m[k]) for k in range(M)])) * cost_scale / eta
-    return cp.sum(weights * costs) * cost_scale, lb, weights
+    return {'Obj':np.sum(weights * costs) * cost_scale,
+            'X': weights,
+            'Obj_list':cp.asnumpy(obj_list)
+            }
 
 def Rho(a, b):
     return b - a + a * cp.log(a / b)
 
-def solve_multi_greenkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, verbose = 0, epsilon_scale_num = 0.99, epsilon_scale_gap = 100, cost_scale = 1, iter_gap = 100, max_iter = 5000, out_dir = 'test'):
+def solve_multi_greenkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, verbose = 0, epsilon_scale_num = 1, epsilon_scale_gap = 100, cost_scale = 1, iter_gap = 100, max_iter = 5000, out_dir = 'test'):
     """Solve using the Greenkhorn algorithm
 
     Args:
@@ -470,6 +476,8 @@ def solve_multi_greenkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, 
     References:
         Altschuler, Jason, Jonathan Weed, and Philippe Rigollet (2018). “Near-linear time approximation algorithms for optimal transport via Sinkhorn iteration.” arXiv: 1705.09634 [cs.DS].
     """
+    costs=cp.asarray(costs)
+    target_mu=cp.asarray(target_mu)
     costs /= cost_scale
     shape = costs.shape
     M = len(shape)
@@ -482,8 +490,6 @@ def solve_multi_greenkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, 
     m = [cp.zeros(s) for s in shape]
     iter = 0
 
-    costs = cp.asarray(costs)
-    eta = cp.asarray(eta)
     B = cp.asarray(B)
     
     obj_list = []
@@ -512,7 +518,7 @@ def solve_multi_greenkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, 
         
         distance = dist(B)
         # primal objective
-        obj = cp.sum(projection(B, target_mu) * costs) * cost_scale
+        obj = cp.asnumpy(cp.sum(projection(B, target_mu) * costs) * cost_scale).item()
         # lower bound    
         lb = cp.sum(cp.asarray([cp.sum(get_marginal_k(target_mu, k, shape) * m[k]) for k in range(M)])) * cost_scale / eta
 
@@ -577,7 +583,10 @@ def solve_multi_greenkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, 
     weights = projection(B, target_mu)
     lb = cp.sum(cp.asarray([cp.sum(get_marginal_k(target_mu, k, shape) * m[k]) for k in range(M)])) * cost_scale / eta
 
-    return cp.sum(weights * costs) * cost_scale, lb, weights,end -start
+    return {'Obj':np.sum(weights * costs) * cost_scale,
+            'X': weights,
+            'Obj_list':cp.asnumpy(obj_list)
+            }
 
 def solve_pd_aam(costs, target_mu, epsilon_final = 1e-6, verbose = 0, print_itr = 0, max_iterate = 50, method = "binary_search", cost_scale = 1, epsilon0 = 0.01, halflife = 1, out_dir = 'test'):
     """Solve using the Accelerated Alternating Minimization (AAM) algorithm
@@ -604,7 +613,8 @@ def solve_pd_aam(costs, target_mu, epsilon_final = 1e-6, verbose = 0, print_itr 
     References:
         Tupitsa, Nazarii et al. (2020). “Multimarginal optimal transport by accelerated alternating minimization”. In: 2020 59th IEEE Conference on Decision and Control (CDC). IEEE, pp. 6132–6137.
     """
-    costs = cp.asarray(costs)
+    costs=cp.asarray(costs)
+    target_mu=cp.asarray(target_mu)
     costs /= cost_scale
     shape = costs.shape
 
@@ -750,7 +760,7 @@ def solve_pd_aam(costs, target_mu, epsilon_final = 1e-6, verbose = 0, print_itr 
         X = (a * primal(theta, gamma) + A_t * X) / A
         
         X = projection(X, p) # TODO: project X to the probability simplex (not in the original code)
-        obj = (costs * X).sum().sum() * cost_scale
+        obj = cp.asnumpy((costs * X).sum() * cost_scale).item()
         gap = 2 * l1_error(X, p_tilde) + F(X, gamma) + psi(eta, p, gamma)
           
         condition_list.append(gap)
@@ -785,8 +795,9 @@ def solve_pd_aam(costs, target_mu, epsilon_final = 1e-6, verbose = 0, print_itr 
 
     X = projection(X, p) # TODO: project X to the probability simplex (not in the original code)
     obj = (costs * X).sum().sum() * cost_scale
-    return obj, lb_obj, X, end -start
-
+    return {'Obj':obj,
+            'X': X,
+            'Obj_list':np.array(obj_list)}
 
 def get_res_single(tmp_list, solver = solve_multi_sinkhorn, return_res = False, print_res = True, cost_type='square'):
     if cost_type == 'cov':
