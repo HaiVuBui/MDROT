@@ -92,7 +92,6 @@ def convert_to_list(U, shape):
 def marginal_k(X, k):
     # marginalize tensor X over dimension k
     return np.sum(X, axis=tuple(axis for axis in range(X.ndim) if axis != k))
-
 def get_marginal_k(p, k, shape):
     return p[ravel_index(k, 0, shape): ravel_index(k, shape[k], shape)]
 
@@ -441,7 +440,7 @@ def solve_multi_greenkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, 
     costs /= cost_scale
     shape = costs.shape
     M = len(shape)
-    # epsilon = args.start_epsilon
+    epsilon = args.start_epsilon
     eta = 4 * sum([log(n) for n in shape]) / epsilon
     epsilon_prime = epsilon / 8 / costs.max()
     min_cost = costs.min()
