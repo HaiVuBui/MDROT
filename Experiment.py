@@ -1,5 +1,5 @@
-import numpy as np
 import os
+import numpy as np
 import matplotlib.pyplot as plt
 import argparse
 from MDrot import Mdrot_gpu
@@ -24,7 +24,7 @@ def main(max_iter):
     os.makedirs(output_folder, exist_ok=True)
 
     # Plot and save the image
-    plt.figure()
+    # plt.figure()
     for i in range(-5, 5):
         ep = 10**i
         save_folder=output_folder+f'/A-{max_iter}'
@@ -48,8 +48,8 @@ def main(max_iter):
     # plt.plot(abs(C['Obj_list'] - opt), label='C')
     # plt.plot(abs(D['Obj_list'] - opt), label='D')
     # plt.plot(abs(M['Obj'] - opt), label='DR')
-    plt.yscale('log')
-    plt.legend()
+    # plt.yscale('log')
+    # plt.legend()
 
     # Save the figure
     figure_filename = os.path.join(output_folder, f'A-{max_iter}.png')  # Change 'plot.png' to your desired file name and format
@@ -58,8 +58,8 @@ def main(max_iter):
     # plt.show()
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Run the plot script with a specified number of maximum iterations.')
-    parser.add_argument('--max_iter', type=int, default=10000, help='The maximum number of iterations for the algorithm.')
-    
+    import argparse
+    parser = argparse.ArgumentParser(description='Run experiment.')
+    parser.add_argument('--max_iter', type=int, default=1000, help='Maximum number of iterations')
     args = parser.parse_args()
     main(args.max_iter)

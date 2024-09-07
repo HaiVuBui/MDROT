@@ -20,19 +20,19 @@ def beta_tensor_gpu(betas,C,eta):
     B=cp.exp(B)
     return B
 
-def sinkhorn_gpu(C,p,q,s,OptSol,eta=1,eps=1e-5,max_iters=500):
+def sinkhorn_gpu(C,p,q,s,eta=1,eps=1e-5,max_iters=500):
     C=cp.array(C)
     p_gpu=cp.array(p)
     q_gpu=cp.array(q)
     s_gpu=cp.array(s)
-    OptSol=cp.array(OptSol)
+    # OptSol=cp.array(OptSol)
 
     m,n,k=C.shape
     betas=[cp.zeros(m),cp.zeros(n),cp.zeros(k)]
     res=cp.zeros(max_iters)
     res[0]=cp.infty
     objfunc=cp.zeros(max_iters)
-    distance=cp.zeros(max_iters)
+    # distance=cp.zeros(max_iters)
     t=0
 
     e = cp.ones(m)
@@ -43,6 +43,7 @@ def sinkhorn_gpu(C,p,q,s,OptSol,eta=1,eps=1e-5,max_iters=500):
     eg=cp.tensordot(e,g,axes=0)
     ef=cp.tensordot(e,f,axes=0)
     done=False
+    start=time()
     while not done:
         B=beta_tensor_gpu(betas,C,eta)
         r1= cp.tensordot(B,fg,axes=2)
@@ -62,16 +63,18 @@ def sinkhorn_gpu(C,p,q,s,OptSol,eta=1,eps=1e-5,max_iters=500):
         res[t]=cla.norm(Ax)
         
         objfunc[t]=(C*B).sum()
-        distance[t]=cla.norm(B.reshape(-1)-OptSol)
+        # distance[t]=cla.norm(B.reshape(-1)-OptSol)
 
         t+=1
         done=t>=max_iters or res[t-1]<eps
+    end=time()
     B=cp.asnumpy(B)
     
     return {'sol':B,
             'Obj':cp.asnumpy(objfunc),
-            'distance':cp.asnumpy(distance),
-            'res':cp.asnumpy(res)}
+            # 'distance':cp.asnumpy(distance),
+            'res':cp.asnumpy(res),
+            'time':end-start}
 
 def beta_tensor(betas,C,eta):
     B=np.add.outer(np.add.outer(betas[0],betas[1]),betas[2])
