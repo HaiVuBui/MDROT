@@ -22,11 +22,11 @@ def main(max_iter):
     output_folder = 'output_test/'+'max_iter-'+f'{max_iter}'
     os.makedirs(output_folder, exist_ok=True)
 
+    algs={'M':range(-8,-4), 'A':range(-3,3), 'B':range(-3,3), 'C':range(1,5), 'D':range(1,5)}  
     # Plot and save the image
-    for i in range(-10, 10):
-        ep = 10**i
-        Results = {}
-        for alg in ['M', 'A', 'B', 'C']:
+    for alg in algs:
+        for i in algs[alg]:
+            ep=10**i
             save_folder = output_folder + f'/{alg}-{max_iter}'
             os.makedirs(save_folder, exist_ok=True)
             npy_filename = os.path.join(save_folder, f'{alg}_Obj_list_ep{ep}.npy')
@@ -36,25 +36,27 @@ def main(max_iter):
                 print(f'{npy_filename} already exists. Skipping computation.')
                 continue
             
-            # Compute the results if the file does not exist
+            # Compute the Result if the file does not exist
             if alg == 'M':
-                Results['M'] = Mdrot_gpu(x0, Cost, p, q, s, max_iters=max_iter, step=ep, compute_r_primal=True, eps_abs=1e-15, verbose=False, print_every=100)
+                Result = Mdrot_gpu(x0, Cost, p, q, s, max_iters=max_iter, step=ep, compute_r_primal=True, eps_abs=1e-15, verbose=False, print_every=100)
             elif alg == 'A':
-                Results['A'] = solve_multi_sinkhorn(Cost, target_mu, epsilon=ep, max_iter=max_iter)
+                Result['A'] = solve_multi_sinkhorn(Cost, target_mu, epsilon=ep, max_iter=max_iter)
             elif alg == 'B':
-                Results['B'] = solve_rrsinkhorn(Cost, target_mu, epsilon=1, max_iter=max_iter)
+                Result['B'] = solve_rrsinkhorn(Cost, target_mu, epsilon=ep, max_iter=max_iter)
             elif alg == 'C':
-                Results['C'] = solve_multi_greenkhorn(Cost, target_mu, epsilon=1, max_iter=max_iter)
+                Result['C'] = solve_multi_greenkhorn(Cost, target_mu, epsilon=ep, max_iter=max_iter)
+            elif alg == 'D':
+                Result['D'] = solve_pd_aam(Cost,target_mu, epsilon0=ep, max_iterate=max_iter)
             
             print('===============================')
             print(f'Computing {alg} with epsilon = {ep} finished')
         
-        # Save the results to .npy files
-        for Result in Results:
-            save_folder = output_folder + f'/{Result}-{max_iter}'
+        # Save the Result to .npy files
+            save_folder = output_folder + f'/{alg}-{max_iter}'
             os.makedirs(save_folder, exist_ok=True)
-            npy_filename = os.path.join(save_folder, f'{Result}_Obj_list_ep{ep}.npy')
-            np.save(npy_filename, Results[Result]['Obj_list'])
+            npy_filename = os.path.join(save_folder, f'{alg}_Obj_list_ep{ep}.npy')
+            np.save(npy_filename, Result['Obj_list'])
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run the plot script with a specified number of maximum iterations.')

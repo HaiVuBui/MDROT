@@ -760,7 +760,7 @@ def solve_pd_aam(costs, target_mu, epsilon_final = 1e-6, verbose = 0, print_itr 
         X = (a * primal(theta, gamma) + A_t * X) / A
         
         X = projection(X, p) # TODO: project X to the probability simplex (not in the original code)
-        obj = cp.asnumpy((costs * X).sum() * cost_scale).item()
+        obj = cp.asnumpy((costs * X).sum().sum() * cost_scale).item()
         gap = 2 * l1_error(X, p_tilde) + F(X, gamma) + psi(eta, p, gamma)
           
         condition_list.append(gap)
