@@ -29,12 +29,15 @@ def main(max_iter):
             ep=10**i
             save_folder = output_folder + f'/{alg}-{max_iter}'
             os.makedirs(save_folder, exist_ok=True)
-            npy_filename = os.path.join(save_folder, f'{alg}_Obj_list_ep{ep}.npy')
-            
-            # Check if the file already exists
-            if os.path.exists(npy_filename):
-                print(f'{npy_filename} already exists. Skipping computation.')
+            is_necessary = False
+            for key in ['Obj_list', 'runtime', 'distance_list']:
+                npy_filename = os.path.join(save_folder, f'{alg}_{key}_ep{ep}.npy')
+                if not os.path.exists(npy_filename):
+                    is_necessary = True
+            if not is_necessary:
+                print(f'{alg} with epsilon = {ep} already exists. Skipping computation.')
                 continue
+            
             
             # Compute the Result if the file does not exist
             if alg == 'M':
@@ -53,9 +56,11 @@ def main(max_iter):
         
         # Save the Result to .npy files
             save_folder = output_folder + f'/{alg}-{max_iter}'
-            os.makedirs(save_folder, exist_ok=True)
-            npy_filename = os.path.join(save_folder, f'{alg}_Obj_list_ep{ep}.npy')
-            np.save(npy_filename, Result['Obj_list'])
+            for key in ['Obj_list', 'runtime', 'distance_list']:
+                npy_filename = os.path.join(save_folder, f'{alg}_{key}{ep}.npy')
+                if not os.path.exists(npy_filename):
+                    np.save(npy_filename, Result[f'{key}'])
+
 
 
 if __name__ == "__main__":

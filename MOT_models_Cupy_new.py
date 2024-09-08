@@ -128,7 +128,7 @@ def solve_lp(costs, target_mu):
     res = linprog(c, A_eq=A, b_eq=target_mu, bounds=[0, 1])
     return res.fun, res.x.reshape(shape)
 
-def solve_multi_sinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, verbose = 0, epsilon_scale_num = 1, epsilon_scale_gap = 100, cost_scale = 1, iter_gap = 100, max_iter = 5000, out_dir = 'test'):
+def solve_multi_sinkhorn(costs, target_mu,opt=None, epsilon=1e-2, target_epsilon=1e-4, verbose = 0, epsilon_scale_num = 1, epsilon_scale_gap = 100, cost_scale = 1, iter_gap = 100, max_iter = 5000, out_dir = 'test'):
     """solve using Sinkhorn's algorithm
 
     Args:
@@ -177,6 +177,8 @@ def solve_multi_sinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, ve
     eps_list = []
     dis_list = []
     epsp_list = []
+    runtime=[]
+    distance_list = []
     
     ########## helper function ###########
     
@@ -230,7 +232,7 @@ def solve_multi_sinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, ve
             stable_update()
             
         B = cp.exp(tensor_sum(m) - eta * costs)
-        distance = dist(B)
+        # distance = dist(B)
         # primal objective
         obj = cp.asnumpy(cp.sum(projection(B, target_mu) * costs) * cost_scale).item()
         # lower bound
@@ -239,10 +241,12 @@ def solve_multi_sinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, ve
     ########## logging results ###########
     
         eps_list.append(epsilon)
-        dis_list.append(distance)
+        # dis_list.append(distance)
         epsp_list.append(epsilon_prime)
         obj_list.append(obj)
         lb_list.append(lb)
+        if not opt is None:
+            distance_list.append(cp.norm(opt - B.reshape(-1)))
         
         if ((tensor_sum(m) - eta * costs) > 0).any().any():
             raise Exception("tensor_sum(m) can't be greater than eta * costs")
@@ -268,29 +272,33 @@ def solve_multi_sinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, ve
         
     ########## update parameters ###########
         iter += 1
-        if distance < epsilon_prime:
-            if abs(obj) > 4 * epsilon:
-                break # stop when epsilon is small enough and converges
-            else:
-                if abs(obj) < 2 * target_epsilon:
-                    raise Exception("obj too small. smaller than target 2 * eps: ", 2 * target_epsilon)
-                elif  iter >= max_iter:
-                    break
-                else:
-                    scale_factor = max(target_epsilon / epsilon, epsilon_scale_num)
-                    epsilon *= scale_factor
-                    epsilon_prime *= scale_factor
-                    eta /= scale_factor
-                    m = [l / scale_factor for l in m]
-        else:
-            if iter >= max_iter:
-                break
-            elif iter % epsilon_scale_gap == 0:
-                scale_factor = max(target_epsilon / epsilon, epsilon_scale_num)
-                epsilon *= scale_factor
-                epsilon_prime *= scale_factor
-                eta /= scale_factor
-                m = [l / scale_factor for l in m]
+        if iter >= max_iter:
+            break
+        # if distance < epsilon_prime:
+        #     if abs(obj) > 4 * epsilon:
+        #         break # stop when epsilon is small enough and converges
+        #     else:
+        #         if abs(obj) < 2 * target_epsilon:
+        #             raise Exception("obj too small. smaller than target 2 * eps: ", 2 * target_epsilon)
+        #         elif  iter >= max_iter:
+        #             break
+        #         else:
+        #             scale_factor = max(target_epsilon / epsilon, epsilon_scale_num)
+        #             epsilon *= scale_factor
+        #             epsilon_prime *= scale_factor
+        #             eta /= scale_factor
+        #             m = [l / scale_factor for l in m]
+        # else:
+        #     if iter >= max_iter:
+        #         break
+        #     elif iter % epsilon_scale_gap == 0:
+        #         scale_factor = max(target_epsilon / epsilon, epsilon_scale_num)
+        #         epsilon *= scale_factor
+        #         epsilon_prime *= scale_factor
+        #         eta /= scale_factor
+        #         m = [l / scale_factor for l in m]
+        end=time()
+        runtime.append(end-start)
     
     ########## return final results ###########
     end=time()
@@ -300,12 +308,14 @@ def solve_multi_sinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, ve
     
     return {'Obj':np.sum(weights * costs) * cost_scale,
             'X': weights,
-            'Obj_list':cp.asnumpy(obj_list)
+            'Obj_list':cp.asnumpy(obj_list),
+            'runtime':runtime,
+            'distance':distance_list
             }
 
 
 
-def solve_rrsinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, verbose = 0, epsilon_scale_num = 1, epsilon_scale_gap = 100, cost_scale = 1, iter_gap = 100, max_iter = 5000, out_dir = 'test'):
+def solve_rrsinkhorn(costs, target_mu,opt=None , epsilon=1e-2, target_epsilon=1e-4, verbose = 0, epsilon_scale_num = 1, epsilon_scale_gap = 100, cost_scale = 1, iter_gap = 100, max_iter = 5000, out_dir = 'test'):
     """solve using Sinkhorn's algorithm in a round robin fashion
 
     Args:
@@ -350,7 +360,8 @@ def solve_rrsinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, verbos
     eps_list = []
     dis_list = []
     epsp_list = []
-    
+    runtime=[]
+    distance_list = []
     ########## helper function ###########
     
     def dist(B):
@@ -376,7 +387,7 @@ def solve_rrsinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, verbos
     # while iter < 500:
         stable_update()
         B = cp.exp(tensor_sum(m) - eta * costs)
-        distance = dist(B)
+        # distance = dist(B)
         # primal objective
         obj = cp.asnumpy(cp.sum(projection(B, target_mu) * costs) * cost_scale).item()
         # lower bound
@@ -385,10 +396,12 @@ def solve_rrsinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, verbos
     ########## logging results ###########
     
         eps_list.append(epsilon)
-        dis_list.append(distance)
+        # dis_list.append(distance)
         epsp_list.append(epsilon_prime)
         obj_list.append(obj)
         lb_list.append(lb)
+        if not opt is None:
+            distance_list.append(cp.norm(opt - B.reshape(-1)))
         
         if ((tensor_sum(m) - eta * costs) > 0).any().any():
             raise Exception("tensor_sum(m) can't be greater than eta * costs")
@@ -414,30 +427,10 @@ def solve_rrsinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, verbos
         
     ########## update parameters ###########
         iter += 1
-        if distance < epsilon_prime:
-            if abs(obj) > 4 * epsilon:
-                break # stop when epsilon is small enough and converges
-            else:
-                if abs(obj) < 2 * target_epsilon:
-                    raise Exception("obj too small. smaller than target 2 * eps: ", 2 * target_epsilon)
-                elif  iter >= max_iter:
-                    break
-                else:
-                    scale_factor = max(target_epsilon / epsilon, epsilon_scale_num)
-                    epsilon *= scale_factor
-                    epsilon_prime *= scale_factor
-                    eta /= scale_factor
-                    m = [l / scale_factor for l in m]
-        else:
-            if iter >= max_iter:
-                break
-            elif iter % epsilon_scale_gap == 0:
-                scale_factor = max(target_epsilon / epsilon, epsilon_scale_num)
-                epsilon *= scale_factor
-                epsilon_prime *= scale_factor
-                eta /= scale_factor
-                m = [l / scale_factor for l in m]
-    end=time()
+        if iter >= max_iter:
+            break
+        end=time()
+        runtime.append(end-start)
     ########## return final results ###########
     
     B = cp.exp(tensor_sum(m) - eta * costs)
@@ -445,13 +438,15 @@ def solve_rrsinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, verbos
     lb = cp.sum(cp.asarray([cp.sum(get_marginal_k(target_mu, k, shape) * m[k]) for k in range(M)])) * cost_scale / eta
     return {'Obj':np.sum(weights * costs) * cost_scale,
             'X': weights,
-            'Obj_list':cp.asnumpy(obj_list)
+            'Obj_list':cp.asnumpy(obj_list),
+            'runtime':runtime,
+            'distance':distance_list
             }
 
 def Rho(a, b):
     return b - a + a * cp.log(a / b)
 
-def solve_multi_greenkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, verbose = 0, epsilon_scale_num = 1, epsilon_scale_gap = 100, cost_scale = 1, iter_gap = 100, max_iter = 5000, out_dir = 'test'):
+def solve_multi_greenkhorn(costs, target_mu, opt=None ,epsilon=1e-2, target_epsilon=1e-4, verbose = 0, epsilon_scale_num = 1, epsilon_scale_gap = 100, cost_scale = 1, iter_gap = 100, max_iter = 5000, out_dir = 'test'):
     """Solve using the Greenkhorn algorithm
 
     Args:
@@ -497,6 +492,8 @@ def solve_multi_greenkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, 
     eps_list = []
     dis_list = []
     epsp_list = []
+    runtime=[]
+    distance_list = []
     
     def dist(B):
         # return sum(np.sum(np.abs(marginal_k(B, i) - get_marginal_k(target_mu, i, shape))) for i in range(B.ndim))
@@ -516,7 +513,7 @@ def solve_multi_greenkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, 
         m[kmax][imax] += cp.log(target_mu[ravel_index(kmax, imax, shape)] / rki)
         B = cp.exp(tensor_sum(m) - eta * costs)
         
-        distance = dist(B)
+        # distance = dist(B)
         # primal objective
         obj = cp.asnumpy(cp.sum(projection(B, target_mu) * costs) * cost_scale).item()
         # lower bound    
@@ -530,6 +527,8 @@ def solve_multi_greenkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, 
         epsp_list.append(epsilon_prime)
         obj_list.append(obj)
         lb_list.append(lb)
+        if not opt is None:
+            distance_list.append(cp.norm(opt - B.reshape(-1)))        
         
         # if iter % iter_gap == 0:
         #     memo = {"m": m, "obj_list":obj_list, "lb_list": lb_list, 
@@ -553,42 +552,46 @@ def solve_multi_greenkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, 
         
     ########## update parameters ###########
         iter += 1
-        if distance < epsilon_prime:
-            if abs(obj) > 4 * epsilon:
-                break # stop when epsilon is small enough and converges
-            else:
-                if abs(obj) < 2 * target_epsilon:
-                    raise Exception("obj too small. smaller than target 2 * eps: ", 2 * target_epsilon)
-                elif  iter >= max_iter:
-                    break
-                else:
-                    scale_factor = max(target_epsilon / epsilon, epsilon_scale_num)
-                    epsilon *= scale_factor
-                    epsilon_prime *= scale_factor
-                    eta /= scale_factor
-                    m = [l / scale_factor for l in m]
-        else:
-            if iter >= max_iter:
-                break
-            elif iter % epsilon_scale_gap == 0:
-                scale_factor = max(target_epsilon / epsilon, epsilon_scale_num)
-                epsilon *= scale_factor
-                epsilon_prime *= scale_factor
-                eta /= scale_factor
-                m = [l / scale_factor for l in m]
+        if iter>=max_iter:
+            break
+        # if distance < epsilon_prime:
+        #     if abs(obj) > 4 * epsilon:
+        #         break # stop when epsilon is small enough and converges
+        #     else:
+        #         if abs(obj) < 2 * target_epsilon:
+        #             raise Exception("obj too small. smaller than target 2 * eps: ", 2 * target_epsilon)
+        #         elif  iter >= max_iter:
+        #             break
+        #         else:
+        #             scale_factor = max(target_epsilon / epsilon, epsilon_scale_num)
+        #             epsilon *= scale_factor
+        #             epsilon_prime *= scale_factor
+        #             eta /= scale_factor
+        #             m = [l / scale_factor for l in m]
+        # else:
+        #     if iter >= max_iter:
+        #         break
+        #     elif iter % epsilon_scale_gap == 0:
+        #         scale_factor = max(target_epsilon / epsilon, epsilon_scale_num)
+        #         epsilon *= scale_factor
+        #         epsilon_prime *= scale_factor
+        #         eta /= scale_factor
+        #         m = [l / scale_factor for l in m]
     
     ########## return final results ###########
-    end=time()
+        end=time()
+        runtime.append(end-start)
     B = cp.exp(tensor_sum(m) - eta * costs)
     weights = projection(B, target_mu)
     lb = cp.sum(cp.asarray([cp.sum(get_marginal_k(target_mu, k, shape) * m[k]) for k in range(M)])) * cost_scale / eta
 
     return {'Obj':np.sum(weights * costs) * cost_scale,
             'X': weights,
-            'Obj_list':cp.asnumpy(obj_list)
+            'Obj_list':cp.asnumpy(obj_list),
+            'runtime':runtime
             }
 
-def solve_pd_aam(costs, target_mu, epsilon_final = 1e-6, verbose = 0, print_itr = 0, max_iterate = 50, method = "binary_search", cost_scale = 1, epsilon0 = 0.01, halflife = 1, out_dir = 'test'):
+def solve_pd_aam(costs, target_mu,opt=None , epsilon_final = 1e-6, verbose = 0, print_itr = 0, max_iterate = 50, method = "binary_search", cost_scale = 1, epsilon0 = 0.01, halflife = 1, out_dir = 'test'):
     """Solve using the Accelerated Alternating Minimization (AAM) algorithm
 
     Args:
@@ -694,6 +697,8 @@ def solve_pd_aam(costs, target_mu, epsilon_final = 1e-6, verbose = 0, print_itr 
     max_lb_obj_list = []
     beta_list = []
     itr = 0
+    runtime=[]
+    distance_list=[]
     
     
     epsilon = (epsilon0 - epsilon_final) * np.exp(-itr * halflife) + epsilon_final
@@ -768,6 +773,8 @@ def solve_pd_aam(costs, target_mu, epsilon_final = 1e-6, verbose = 0, print_itr 
         lb_obj_list.append(lb_obj)
         max_lb_obj_list.append(max(lb_obj_list))
         dual_obj_list.append(dual_obj)
+        if not opt is None:
+            distance_list.append(cp.norm(opt - X.reshape(-1)))
         
         if verbose >= 2 and itr >= print_itr and itr % 100 == 0: 
             print("*", "obj: ", obj, "dual_obj", dual_obj, "lb_obj", lb_obj, "gap:", gap, "l1_error", l1_error(X, p_tilde), "F", F(X, gamma), "psi", psi(eta, p, gamma), "eps", epsilon / 2, "*")
@@ -787,7 +794,7 @@ def solve_pd_aam(costs, target_mu, epsilon_final = 1e-6, verbose = 0, print_itr 
 
         epsilon_p = epsilon / (8 * C_norm)
         p_tilde = (1 - epsilon_p/(4 * m)) * cp.array(target_mu) + epsilon_p / (4 * m) * uniform
-    end=time()
+        end=time()
     print("*", "obj: ", obj, "dual_obj", dual_obj, "lb_obj", lb_obj, "max lb_obj", max_lb_obj_list[-1], "gap:", gap, "l1_error", l1_error(X, p_tilde), "F", F(X, gamma), "psi", psi(eta, p, gamma), "eps", epsilon / 2, "*")
     lb_obj = dual_obj - epsilon * np.log(np.prod(shape))
         
@@ -797,7 +804,9 @@ def solve_pd_aam(costs, target_mu, epsilon_final = 1e-6, verbose = 0, print_itr 
     obj = (costs * X).sum().sum() * cost_scale
     return {'Obj':obj,
             'X': X,
-            'Obj_list':np.array(obj_list)}
+            'Obj_list':np.array(obj_list),
+            'runtime':runtime,
+            'distance':distance_list}
 
 def get_res_single(tmp_list, solver = solve_multi_sinkhorn, return_res = False, print_res = True, cost_type='square'):
     if cost_type == 'cov':

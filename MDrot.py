@@ -33,6 +33,7 @@ def projection_update(X,phi1,phi2,phi3):
 
 def Mdrot_gpu(init, C, p, q, r, **kwargs):
     # Stopping parameters
+    opt=None
     max_iters = kwargs.pop("max_iters", 100)
     eps_abs = kwargs.pop("eps_abs", 1e-6)
     eps_rel = kwargs.pop("eps_rel", 1e-15)
@@ -90,7 +91,8 @@ def Mdrot_gpu(init, C, p, q, r, **kwargs):
     b = cp.hstack((p, q, r))
     v=cp.zeros(max_iters)
     objfunc=cp.zeros(max_iters)
-#    distance=cp.zeros(max_iters)
+    distance=cp.zeros(max_iters)
+    runtime=[]
     r_primal = cp.zeros(max_iters)
     r_dual = cp.zeros(max_iters)
     r_full = cp.infty
@@ -106,7 +108,8 @@ def Mdrot_gpu(init, C, p, q, r, **kwargs):
         #trace_nonnegative_prox_nb(x.T.reshape(-1), C.T.reshape(-1), step)
         x=cp.maximum(x-step*C,0.0)
         objfunc[i]=(x*C).sum()
-#        distance[i]=cla.norm(x.reshape(-1)-OptSol)
+        if not opt is None:
+            distance[i]=cla.norm(x.reshape(-1)-opt)
 
 
         b1= cp.tensordot(x,fg,axes=2)
@@ -159,18 +162,20 @@ def Mdrot_gpu(init, C, p, q, r, **kwargs):
         done = (i >= max_iters) or (r_primal[i-1] <= eps_abs)
         
     
-    end = time()
-    print("Drot terminated at iteration ", i-1)
+        end = time()
+        runtime.append(end-start)
+    # print("Drot terminated at iteration ", i-1)
     x=cp.maximum(x-step*C,0.0)
     x=cp.asnumpy(x)
     #trace_nonnegative_prox_nb(x.T.reshape(-1), C.T.reshape(-1), step)
     return {"sol":          x,
             "Obj_list":          cp.asnumpy(objfunc),
-            # "distance":     cp.asnumpy(distance),
+            "distance_list":     cp.asnumpy(distance),
             "primal":       cp.asnumpy(r_primal),
             "dual":         cp.array(r_dual),
             "num_iters":    i,
-            "solve_time":   (end - start)}
+            "solve_time":   (end - start),
+            'runtime':      runtime}
 
 def Mdrot_gpu_32(init, C, p, q, r, **kwargs):
     # Stopping parameters
