@@ -523,7 +523,7 @@ def solve_multi_greenkhorn(costs, target_mu, opt=None ,epsilon=1e-2, target_epsi
     ########## logging results ###########
     
         eps_list.append(epsilon)
-        dis_list.append(distance)
+        # dis_list.append(distance)
         epsp_list.append(epsilon_prime)
         obj_list.append(obj)
         lb_list.append(lb)
