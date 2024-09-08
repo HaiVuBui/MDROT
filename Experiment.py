@@ -19,7 +19,7 @@ def main(max_iter):
     target_mu = np.concatenate([p, q, s], axis=0)
 
     # Ensure output directory exists
-    output_folder = 'output_test/'+'-'+f'{max_iter}'
+    output_folder = 'output_test/'+'max_iter-'+f'{max_iter}'
     os.makedirs(output_folder, exist_ok=True)
 
     # Plot and save the image
