@@ -588,7 +588,8 @@ def solve_multi_greenkhorn(costs, target_mu, opt=None ,epsilon=1e-2, target_epsi
     return {'Obj':np.sum(weights * costs) * cost_scale,
             'X': weights,
             'Obj_list':cp.asnumpy(obj_list),
-            'runtime':runtime
+            'runtime':runtime,
+            'distance':distance_list
             }
 
 def solve_pd_aam(costs, target_mu,opt=None , epsilon_final = 1e-6, verbose = 0, print_itr = 0, max_iterate = 50, method = "binary_search", cost_scale = 1, epsilon0 = 0.01, halflife = 1, out_dir = 'test'):
