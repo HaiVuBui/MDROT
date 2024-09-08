@@ -2,7 +2,7 @@ import numpy as np
 from functools import reduce
 from itertools import product
 from math import log, sqrt
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 from scipy import optimize
 from scipy.optimize import linprog
 import pickle as pkl
