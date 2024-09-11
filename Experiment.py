@@ -7,11 +7,11 @@ from MOT_models_Cupy_new import solve_multi_sinkhorn, solve_rrsinkhorn, solve_mu
 
 def main(max_iter):
     # Define the data folder and parameters
-    data_folder = 'data/size30/seed20/'
+    data_folder = 'data/size20/seed20/'
     X = np.fromfile(data_folder + 'exp_number0.npy', dtype=np.float64)
 
     # Prepare the input data
-    Cost, p, q, s = prepare_input(N=10,size=30)
+    Cost, p, q, s = prepare_input(N=10,size=20)
     x0 = np.tensordot(p, np.tensordot(q, s, 0), 0)
     opt = (X * Cost.reshape(-1)).sum().item()
 
@@ -19,10 +19,10 @@ def main(max_iter):
     target_mu = np.concatenate([p, q, s], axis=0)
 
     # Ensure output directory exists
-    output_folder = 'output_30/'+'max_iter-'+f'{max_iter}'
+    output_folder = 'output_20/'+'max_iter-'+f'{max_iter}'
     os.makedirs(output_folder, exist_ok=True)
 
-    algs={'M':range(-9,-4), 'A':range(-3,3), 'B':range(-3,3), 'C':range(-1,5)}  
+    algs={'M':range(-9,-1), 'A':range(-3,3), 'B':range(-3,3), 'C':range(-1,5)}  
     # Plot and save the image
     for alg in algs:
         for i in algs[alg]:
@@ -31,7 +31,7 @@ def main(max_iter):
             os.makedirs(save_folder, exist_ok=True)
             is_necessary = False
             for key in ['Obj_list', 'runtime', 'distance']:
-                npy_filename = os.path.join(save_folder, f'{alg}_{key}_ep{ep}.npy')
+                npy_filename = os.path.join(save_folder, f'{alg}_{key}{ep}.npy')
                 if not os.path.exists(npy_filename):
                     is_necessary = True
             if not is_necessary:
