@@ -158,7 +158,8 @@ def solve_multi_sinkhorn(costs, target_mu,opt=None, epsilon=1e-2, target_epsilon
     costs = cp.asarray(costs)
     target_mu=cp.asarray(target_mu)
     costs /= cost_scale
-    opt=cp.array(opt)
+    if not opt is None:
+        opt=cp.array(opt)
     shape = costs.shape
     M = len(shape)
     # print("shape: ", shape)
@@ -346,7 +347,8 @@ def solve_rrsinkhorn(costs, target_mu,opt=None , epsilon=1e-2, target_epsilon=1e
     ########## initialization ###########
     costs=cp.asarray(costs)
     target_mu=cp.asarray(target_mu)
-    opt=cp.array(opt)
+    if not opt is None:
+        opt=cp.array(opt)
     costs /= cost_scale
     shape = costs.shape
     M = len(shape)
@@ -477,7 +479,8 @@ def solve_multi_greenkhorn(costs, target_mu, opt=None ,epsilon=1e-2, target_epsi
     """
     costs=cp.asarray(costs)
     target_mu=cp.asarray(target_mu)
-    opt=cp.array(opt)
+    if not opt is None:
+        opt=cp.array(opt)
     costs /= cost_scale
     shape = costs.shape
     M = len(shape)
@@ -624,7 +627,8 @@ def solve_pd_aam(costs, target_mu,opt=None , epsilon_final = 1e-6, verbose = 0, 
     """
     costs=cp.asarray(costs)
     target_mu=cp.asarray(target_mu)
-    opt=cp.array(opt)
+    if not opt is None:
+        opt=cp.array(opt)
     costs /= cost_scale
     shape = costs.shape
 
@@ -803,8 +807,8 @@ def solve_pd_aam(costs, target_mu,opt=None , epsilon_final = 1e-6, verbose = 0, 
         p_tilde = (1 - epsilon_p/(4 * m)) * cp.array(target_mu) + epsilon_p / (4 * m) * uniform
         end=time()
         runtime.append(end-start)
-    print("*", "obj: ", obj, "dual_obj", dual_obj, "lb_obj", lb_obj, "max lb_obj", max_lb_obj_list[-1], "gap:", gap, "l1_error", l1_error(X, p_tilde), "F", F(X, gamma), "psi", psi(eta, p, gamma), "eps", epsilon / 2, "*")
-    lb_obj = dual_obj - epsilon * np.log(np.prod(shape))
+    # print("*", "obj: ", obj, "dual_obj", dual_obj, "lb_obj", lb_obj, "max lb_obj", max_lb_obj_list[-1], "gap:", gap, "l1_error", l1_error(X, p_tilde), "F", F(X, gamma), "psi", psi(eta, p, gamma), "eps", epsilon / 2, "*")
+    # lb_obj = dual_obj - epsilon * np.log(np.prod(shape))
         
     X = (a * primal(theta, gamma) + A_t * X) / A
 

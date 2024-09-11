@@ -68,7 +68,8 @@ def Mdrot_gpu(init, C, p, q, r, **kwargs):
         print(" iter | total res | primal res | dual res | time (s)")
         print("----------------------------------------------------")
     
-    opt=cp.array(opt)
+    if not opt is None:
+        opt=cp.array(opt)
 
     C=cp.array(C)
     p=cp.array(p)
@@ -109,8 +110,8 @@ def Mdrot_gpu(init, C, p, q, r, **kwargs):
         x=cp.maximum(x-step*C,0.0)
         objfunc[i]=(x*C).sum()
 
-        
-        distance[i]=cla.norm(x.reshape(-1)-opt).item()
+        if opt is not None:
+            distance[i]=cla.norm(x.reshape(-1)-opt).item()
 
 
         b1= cp.tensordot(x,fg,axes=2)
