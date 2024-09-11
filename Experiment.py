@@ -7,11 +7,11 @@ from MOT_models_Cupy_new import solve_multi_sinkhorn, solve_rrsinkhorn, solve_mu
 
 def main(max_iter):
     # Define the data folder and parameters
-    data_folder = 'data/size20/seed20/'
+    data_folder = 'data/size40/seed20/'
     X = np.fromfile(data_folder + 'exp_number0.npy', dtype=np.float64)
 
     # Prepare the input data
-    Cost, p, q, s = prepare_input(N=10,size=20)
+    Cost, p, q, s = prepare_input(N=10,size=40)
     x0 = np.tensordot(p, np.tensordot(q, s, 0), 0)
     opt = (X * Cost.reshape(-1)).sum().item()
 
@@ -19,7 +19,7 @@ def main(max_iter):
     target_mu = np.concatenate([p, q, s], axis=0)
 
     # Ensure output directory exists
-    output_folder = 'output_20/'+'max_iter-'+f'{max_iter}'
+    output_folder = 'output_40/'+'max_iter-'+f'{max_iter}'
     os.makedirs(output_folder, exist_ok=True)
 
     algs={'M':range(-9,-1), 'A':range(-3,3), 'B':range(-3,3), 'C':range(-1,5)}  
