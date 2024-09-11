@@ -22,7 +22,7 @@ def main(max_iter):
     output_folder = 'output_test/'+'max_iter-'+f'{max_iter}'
     os.makedirs(output_folder, exist_ok=True)
 
-    algs={'M':range(-6,-5), 'A':range(0,1), 'B':range(0,1), 'C':range(2,3), 'D':range(2,3)}  
+    algs={'M':range(-7,-4), 'A':range(-1,2), 'B':range(-1,2), 'C':range(1,4), 'D':range(1,4)}  
     # Plot and save the image
     for alg in algs:
         for i in algs[alg]:
