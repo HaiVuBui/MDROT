@@ -22,7 +22,7 @@ def main(max_iter):
     output_folder = 'output_test/'+'max_iter-'+f'{max_iter}'
     os.makedirs(output_folder, exist_ok=True)
 
-    algs={'M':range(-8,-4), 'A':range(-3,3), 'B':range(-3,3), 'C':range(1,5), 'D':range(1,5)}  
+    algs={'M':range(-6,-5), 'A':range(0,1), 'B':range(0,1), 'C':range(2,3), 'D':range(2,3)}  
     # Plot and save the image
     for alg in algs:
         for i in algs[alg]:
@@ -30,7 +30,7 @@ def main(max_iter):
             save_folder = output_folder + f'/{alg}-{max_iter}'
             os.makedirs(save_folder, exist_ok=True)
             is_necessary = False
-            for key in ['Obj_list', 'runtime', 'distance_list']:
+            for key in ['Obj_list', 'runtime', 'distance']:
                 npy_filename = os.path.join(save_folder, f'{alg}_{key}_ep{ep}.npy')
                 if not os.path.exists(npy_filename):
                     is_necessary = True
@@ -41,22 +41,22 @@ def main(max_iter):
             
             # Compute the Result if the file does not exist
             if alg == 'M':
-                Result = Mdrot_gpu(x0, Cost, p, q, s, max_iters=max_iter, step=ep, compute_r_primal=True, eps_abs=1e-15, verbose=False, print_every=100)
+                Result = Mdrot_gpu(x0, Cost, p, q, s,opt=X ,max_iters=max_iter, step=ep, compute_r_primal=True, eps_abs=1e-15, verbose=False, print_every=100)
             elif alg == 'A':
-                Result['A'] = solve_multi_sinkhorn(Cost, target_mu, epsilon=ep, max_iter=max_iter)
+                Result = solve_multi_sinkhorn(Cost, target_mu,opt=X, epsilon=ep, max_iter=max_iter)
             elif alg == 'B':
-                Result['B'] = solve_rrsinkhorn(Cost, target_mu, epsilon=ep, max_iter=max_iter)
+                Result = solve_rrsinkhorn(Cost, target_mu, opt=X, epsilon=ep, max_iter=max_iter)
             elif alg == 'C':
-                Result['C'] = solve_multi_greenkhorn(Cost, target_mu, epsilon=ep, max_iter=max_iter)
+                Result = solve_multi_greenkhorn(Cost, target_mu,opt=X, epsilon=ep, max_iter=max_iter)
             elif alg == 'D':
-                Result['D'] = solve_pd_aam(Cost,target_mu, epsilon0=ep, max_iterate=max_iter)
+                Result = solve_pd_aam(Cost,target_mu,opt=X ,epsilon0=ep, max_iterate=max_iter)
             
             print('===============================')
             print(f'Computing {alg} with epsilon = {ep} finished')
         
         # Save the Result to .npy files
             save_folder = output_folder + f'/{alg}-{max_iter}'
-            for key in ['Obj_list', 'runtime', 'distance_list']:
+            for key in ['Obj_list', 'runtime', 'distance']:
                 npy_filename = os.path.join(save_folder, f'{alg}_{key}{ep}.npy')
                 if not os.path.exists(npy_filename):
                     np.save(npy_filename, Result[f'{key}'])

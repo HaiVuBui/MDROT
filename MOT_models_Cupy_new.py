@@ -6,11 +6,12 @@ from math import log, sqrt
 from scipy import optimize
 from scipy.optimize import linprog
 import pickle as pkl
-import time
+
 from time import time
 import argparse
 import torch
 import cupy as cp  
+import cupy.linalg as cla
 
 
 def parse_args():
@@ -157,6 +158,7 @@ def solve_multi_sinkhorn(costs, target_mu,opt=None, epsilon=1e-2, target_epsilon
     costs = cp.asarray(costs)
     target_mu=cp.asarray(target_mu)
     costs /= cost_scale
+    opt=cp.array(opt)
     shape = costs.shape
     M = len(shape)
     # print("shape: ", shape)
@@ -245,8 +247,9 @@ def solve_multi_sinkhorn(costs, target_mu,opt=None, epsilon=1e-2, target_epsilon
         epsp_list.append(epsilon_prime)
         obj_list.append(obj)
         lb_list.append(lb)
+        
         if not opt is None:
-            distance_list.append(cp.norm(opt - B.reshape(-1)))
+            distance_list.append(cla.norm(opt - B.reshape(-1)).item())
         
         if ((tensor_sum(m) - eta * costs) > 0).any().any():
             raise Exception("tensor_sum(m) can't be greater than eta * costs")
@@ -301,7 +304,7 @@ def solve_multi_sinkhorn(costs, target_mu,opt=None, epsilon=1e-2, target_epsilon
         runtime.append(end-start)
     
     ########## return final results ###########
-    end=time()
+    
     B = cp.exp(tensor_sum(m) - eta * costs)
     weights = projection(B, target_mu)
     lb = cp.sum(cp.asarray([cp.sum(get_marginal_k(target_mu, k, shape) * m[k]) for k in range(M)])) * cost_scale / eta
@@ -343,6 +346,7 @@ def solve_rrsinkhorn(costs, target_mu,opt=None , epsilon=1e-2, target_epsilon=1e
     ########## initialization ###########
     costs=cp.asarray(costs)
     target_mu=cp.asarray(target_mu)
+    opt=cp.array(opt)
     costs /= cost_scale
     shape = costs.shape
     M = len(shape)
@@ -401,7 +405,7 @@ def solve_rrsinkhorn(costs, target_mu,opt=None , epsilon=1e-2, target_epsilon=1e
         obj_list.append(obj)
         lb_list.append(lb)
         if not opt is None:
-            distance_list.append(cp.norm(opt - B.reshape(-1)))
+            distance_list.append(cla.norm(opt - B.reshape(-1)).item())
         
         if ((tensor_sum(m) - eta * costs) > 0).any().any():
             raise Exception("tensor_sum(m) can't be greater than eta * costs")
@@ -473,6 +477,7 @@ def solve_multi_greenkhorn(costs, target_mu, opt=None ,epsilon=1e-2, target_epsi
     """
     costs=cp.asarray(costs)
     target_mu=cp.asarray(target_mu)
+    opt=cp.array(opt)
     costs /= cost_scale
     shape = costs.shape
     M = len(shape)
@@ -528,7 +533,7 @@ def solve_multi_greenkhorn(costs, target_mu, opt=None ,epsilon=1e-2, target_epsi
         obj_list.append(obj)
         lb_list.append(lb)
         if not opt is None:
-            distance_list.append(cp.norm(opt - B.reshape(-1)))        
+            distance_list.append(cla.norm(opt - B.reshape(-1)).item())     
         
         # if iter % iter_gap == 0:
         #     memo = {"m": m, "obj_list":obj_list, "lb_list": lb_list, 
@@ -619,6 +624,7 @@ def solve_pd_aam(costs, target_mu,opt=None , epsilon_final = 1e-6, verbose = 0, 
     """
     costs=cp.asarray(costs)
     target_mu=cp.asarray(target_mu)
+    opt=cp.array(opt)
     costs /= cost_scale
     shape = costs.shape
 
@@ -775,7 +781,7 @@ def solve_pd_aam(costs, target_mu,opt=None , epsilon_final = 1e-6, verbose = 0, 
         max_lb_obj_list.append(max(lb_obj_list))
         dual_obj_list.append(dual_obj)
         if not opt is None:
-            distance_list.append(cp.norm(opt - X.reshape(-1)))
+            distance_list.append(cla.norm(opt - X.reshape(-1)).item())
         
         if verbose >= 2 and itr >= print_itr and itr % 100 == 0: 
             print("*", "obj: ", obj, "dual_obj", dual_obj, "lb_obj", lb_obj, "gap:", gap, "l1_error", l1_error(X, p_tilde), "F", F(X, gamma), "psi", psi(eta, p, gamma), "eps", epsilon / 2, "*")
@@ -796,6 +802,7 @@ def solve_pd_aam(costs, target_mu,opt=None , epsilon_final = 1e-6, verbose = 0, 
         epsilon_p = epsilon / (8 * C_norm)
         p_tilde = (1 - epsilon_p/(4 * m)) * cp.array(target_mu) + epsilon_p / (4 * m) * uniform
         end=time()
+        runtime.append(end-start)
     print("*", "obj: ", obj, "dual_obj", dual_obj, "lb_obj", lb_obj, "max lb_obj", max_lb_obj_list[-1], "gap:", gap, "l1_error", l1_error(X, p_tilde), "F", F(X, gamma), "psi", psi(eta, p, gamma), "eps", epsilon / 2, "*")
     lb_obj = dual_obj - epsilon * np.log(np.prod(shape))
         

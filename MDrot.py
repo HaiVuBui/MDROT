@@ -33,7 +33,7 @@ def projection_update(X,phi1,phi2,phi3):
 
 def Mdrot_gpu(init, C, p, q, r, **kwargs):
     # Stopping parameters
-    opt=None
+    opt = kwargs.pop("opt", None)
     max_iters = kwargs.pop("max_iters", 100)
     eps_abs = kwargs.pop("eps_abs", 1e-6)
     eps_rel = kwargs.pop("eps_rel", 1e-15)
@@ -68,7 +68,7 @@ def Mdrot_gpu(init, C, p, q, r, **kwargs):
         print(" iter | total res | primal res | dual res | time (s)")
         print("----------------------------------------------------")
     
- #   OptSol=cp.array(OptSol)
+    opt=cp.array(opt)
 
     C=cp.array(C)
     p=cp.array(p)
@@ -108,8 +108,9 @@ def Mdrot_gpu(init, C, p, q, r, **kwargs):
         #trace_nonnegative_prox_nb(x.T.reshape(-1), C.T.reshape(-1), step)
         x=cp.maximum(x-step*C,0.0)
         objfunc[i]=(x*C).sum()
-        if not opt is None:
-            distance[i]=cla.norm(x.reshape(-1)-opt)
+
+        
+        distance[i]=cla.norm(x.reshape(-1)-opt).item()
 
 
         b1= cp.tensordot(x,fg,axes=2)
@@ -170,7 +171,7 @@ def Mdrot_gpu(init, C, p, q, r, **kwargs):
     #trace_nonnegative_prox_nb(x.T.reshape(-1), C.T.reshape(-1), step)
     return {"sol":          x,
             "Obj_list":          cp.asnumpy(objfunc),
-            "distance_list":     cp.asnumpy(distance),
+            "distance":     cp.asnumpy(distance),
             "primal":       cp.asnumpy(r_primal),
             "dual":         cp.array(r_dual),
             "num_iters":    i,
