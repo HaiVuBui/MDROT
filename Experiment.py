@@ -45,6 +45,8 @@ def single_experiment(alg,size,max_iter,ep):
 
             for key in ['Obj_list', 'runtime', 'distance']:
                 Result[key]+=temp[key]
+        for key in ['Obj_list', 'runtime', 'distance']:
+            Result[key]=Result[key]
     return Result
 
 def main(max_iter):
