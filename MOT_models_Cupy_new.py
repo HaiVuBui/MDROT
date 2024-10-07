@@ -313,8 +313,8 @@ def solve_multi_sinkhorn(costs, target_mu,opt=None, epsilon=1e-2, target_epsilon
     return {'Obj':np.sum(weights * costs) * cost_scale,
             'X': weights,
             'Obj_list':cp.asnumpy(obj_list),
-            'runtime':runtime,
-            'distance':distance_list
+            'runtime':np.array(runtime),
+            'distance':np.array(distance_list)
             }
 
 
@@ -445,8 +445,8 @@ def solve_rrsinkhorn(costs, target_mu,opt=None , epsilon=1e-2, target_epsilon=1e
     return {'Obj':np.sum(weights * costs) * cost_scale,
             'X': weights,
             'Obj_list':cp.asnumpy(obj_list),
-            'runtime':runtime,
-            'distance':distance_list
+            'runtime':np.array(runtime),
+            'distance':np.array(distance_list)
             }
 
 def Rho(a, b):
@@ -596,8 +596,8 @@ def solve_multi_greenkhorn(costs, target_mu, opt=None ,epsilon=1e-2, target_epsi
     return {'Obj':np.sum(weights * costs) * cost_scale,
             'X': weights,
             'Obj_list':cp.asnumpy(obj_list),
-            'runtime':runtime,
-            'distance':distance_list
+            'runtime':np.array(runtime),
+            'distance':np.array(distance_list)
             }
 
 def solve_pd_aam(costs, target_mu,opt=None , epsilon_final = 1e-6, verbose = 0, print_itr = 0, max_iterate = 50, method = "binary_search", cost_scale = 1, epsilon0 = 0.01, halflife = 1, out_dir = 'test'):

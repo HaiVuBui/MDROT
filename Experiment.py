@@ -7,6 +7,7 @@ from MOT_models_Cupy_new import solve_multi_sinkhorn, solve_rrsinkhorn, solve_mu
 
 def single_experiment(alg,size,max_iter,ep): 
     exp_set=range(0,10)
+    Result={}
     for exp_idx in exp_set:
         # Define the data folder and parameters
         data_folder = f'data/size{size}/seed20/'
@@ -20,33 +21,35 @@ def single_experiment(alg,size,max_iter,ep):
         # Combine p, q, and s into target_mu
         target_mu = np.concatenate([p, q, s], axis=0)
 
-        if exp_idx==0:        
-            if alg == 'M':
-                Result = Mdrot_gpu(x0, Cost, p, q, s,opt=X ,max_iters=max_iter, step=ep, compute_r_primal=True, eps_abs=1e-15, verbose=False, print_every=100)
-            elif alg == 'A':
-                Result = solve_multi_sinkhorn(Cost, target_mu,opt=X, epsilon=ep, max_iter=max_iter)
-            elif alg == 'B':
-                Result = solve_rrsinkhorn(Cost, target_mu, opt=X, epsilon=ep, max_iter=max_iter)
-            elif alg == 'C':
-                Result = solve_multi_greenkhorn(Cost, target_mu,opt=X, epsilon=ep, max_iter=max_iter)
-            elif alg == 'D':
-                Result = solve_pd_aam(Cost,target_mu,opt=X ,epsilon0=ep, max_iterate=max_iter)
-        else:
-            if alg == 'M':
-                temp = Mdrot_gpu(x0, Cost, p, q, s,opt=X ,max_iters=max_iter, step=ep, compute_r_primal=True, eps_abs=1e-15, verbose=False, print_every=100)
-            elif alg == 'A':
-                temp = solve_multi_sinkhorn(Cost, target_mu,opt=X, epsilon=ep, max_iter=max_iter)
-            elif alg == 'B':
-                temp = solve_rrsinkhorn(Cost, target_mu, opt=X, epsilon=ep, max_iter=max_iter)
-            elif alg == 'C':
-                temp = solve_multi_greenkhorn(Cost, target_mu,opt=X, epsilon=ep, max_iter=max_iter)
-            elif alg == 'D':
-                temp = solve_pd_aam(Cost,target_mu,opt=X ,epsilon0=ep, max_iterate=max_iter)
+        
+        if alg == 'M':
+            temp = Mdrot_gpu(x0, Cost, p, q, s,opt=X ,max_iters=max_iter, step=ep, compute_r_primal=True, eps_abs=1e-15, verbose=False, print_every=100)
+        elif alg == 'A':
+            temp = solve_multi_sinkhorn(Cost, target_mu,opt=X, epsilon=ep, max_iter=max_iter)
+        elif alg == 'B':
+            temp = solve_rrsinkhorn(Cost, target_mu, opt=X, epsilon=ep, max_iter=max_iter)
+        elif alg == 'C':
+            temp = solve_multi_greenkhorn(Cost, target_mu,opt=X, epsilon=ep, max_iter=max_iter)
+        elif alg == 'D':
+            temp = solve_pd_aam(Cost,target_mu,opt=X ,epsilon0=ep, max_iterate=max_iter)
 
+        if exp_idx==0:
             for key in ['Obj_list', 'runtime', 'distance']:
-                Result[key]+=temp[key]
-        for key in ['Obj_list', 'runtime', 'distance']:
-            Result[key]=Result[key]
+                if key=='Obj)list':
+                    Result[key]=abs(temp[key]-opt)
+                else:
+                    Result[key]=temp[key]
+        else:
+            for key in ['Obj_list', 'runtime', 'distance']:
+                if key=='Obj)list':
+                    Result[key]+=abs(temp[key]-opt)
+                else:
+                    Result[key]+=temp[key]
+    # for key in ['Obj_list', 'runtime', 'distance']:
+    #     print(key)
+    #     Result[key]/=10
+    #     print(key)
+
     return Result
 
 def main(max_iter):
