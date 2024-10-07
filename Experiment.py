@@ -51,7 +51,7 @@ def single_experiment(alg,size,max_iter,ep):
 
 def main(max_iter):
     #parameters
-    size=40
+    size=60
     algs={'M':range(-9,-1), 'A':range(-3,3), 'B':range(-3,3), 'C':range(-1,5)}  
     #sace folder
     #Ensure output directory exists
