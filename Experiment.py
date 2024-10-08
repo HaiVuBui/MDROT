@@ -41,7 +41,7 @@ def single_experiment(alg,size,max_iter,ep):
                     Result[key]=temp[key]
         else:
             for key in ['Obj_list', 'runtime', 'distance']:
-                if key=='Obj)list':
+                if key=='Obj_list':
                     Result[key]+=abs(temp[key]-opt)
                 else:
                     Result[key]+=temp[key]
@@ -54,8 +54,8 @@ def single_experiment(alg,size,max_iter,ep):
 
 def main(max_iter):
     #parameters
-    size=20
-    algs={'M':range(-9,-1), 'A':range(-3,3), 'B':range(-3,3), 'C':range(-1,5)}  
+    size=60
+    algs={'M':range(-7,-3), 'A':range(-1,2), 'B':range(-1,2), 'C':range(0,3)}  
     #sace folder
     #Ensure output directory exists
     output_folder = f'output_{size}/'+'max_iter-'+f'{max_iter}'
