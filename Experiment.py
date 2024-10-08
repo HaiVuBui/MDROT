@@ -52,9 +52,9 @@ def single_experiment(alg,size,max_iter,ep):
 
     return Result
 
-def main(max_iter):
+def main(max_iter,size):
     #parameters
-    size=60
+    
     algs={'M':range(-7,-3), 'A':range(-1,2), 'B':range(-1,2), 'C':range(0,3)}  
     #sace folder
     #Ensure output directory exists
@@ -100,6 +100,8 @@ def main(max_iter):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run the plot script with a specified number of maximum iterations.')
     parser.add_argument('--max_iter', type=int, default=10000, help='The maximum number of iterations for the algorithm.')
-    
+        
+    parser.add_argument('--size', type=int, default=40, help='size')
+
     args = parser.parse_args()
-    main(args.max_iter)
+    main(args.max_iter,args.size)
