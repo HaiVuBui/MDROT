@@ -2,19 +2,19 @@ import numpy as np
 import os
 import argparse
 from MDrot import Mdrot_gpu
-from prepare_data import prepare_input
+from prepare_data import prepare_input,prepare_mnist
 from MOT_models_Cupy_new import solve_multi_sinkhorn, solve_rrsinkhorn, solve_multi_greenkhorn, solve_pd_aam
 
-def single_experiment(alg,size,max_iter,ep): 
+def single_experiment(alg,max_iter,ep): 
     exp_set=range(0,10)
     Result={}
     for exp_idx in exp_set:
         # Define the data folder and parameters
-        data_folder = f'data/size{size}/seed20/'
+        data_folder = f'data/mnist/'
         X = np.fromfile(data_folder + f'exp_number{exp_idx}.npy', dtype=np.float64)
 
         # Prepare the input data
-        Cost, p, q, s = prepare_input(k=exp_idx,N=10,size=size)
+        Cost, p, q, s = prepare_mnist(k=exp_idx,N=10)
         x0 = np.tensordot(p, np.tensordot(q, s, 0), 0)
         opt = (X * Cost.reshape(-1)).sum().item()
 
@@ -52,13 +52,13 @@ def single_experiment(alg,size,max_iter,ep):
 
     return Result
 
-def main(max_iter,size):
+def main(max_iter):
     #parameters
     
     algs={'M':range(-7,-3), 'A':range(-1,2), 'B':range(-1,2), 'C':range(0,3)}  
     #sace folder
     #Ensure output directory exists
-    output_folder = f'output_{size}/'+'max_iter-'+f'{max_iter}'
+    output_folder = f'output_mnist/'+'max_iter-'+f'{max_iter}'
     os.makedirs(output_folder, exist_ok=True)
 
     algs={'M':range(-9,-1), 'A':range(-3,3), 'B':range(-3,3), 'C':range(-1,5)}  
@@ -84,7 +84,7 @@ def main(max_iter,size):
                 continue
 
             #compute
-            Result=single_experiment(alg,size,max_iter,ep)
+            Result=single_experiment(alg,max_iter,ep)
             print('===============================')
             print(f'Computing {alg} with epsilon = {ep} finished')
         
@@ -101,7 +101,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run the plot script with a specified number of maximum iterations.')
     parser.add_argument('--max_iter', type=int, default=10000, help='The maximum number of iterations for the algorithm.')
         
-    parser.add_argument('--size', type=int, default=40, help='size')
+    # parser.add_argument('--size', type=int, default=40, help='size')
 
     args = parser.parse_args()
     main(args.max_iter,args.size)
