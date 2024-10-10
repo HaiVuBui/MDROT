@@ -104,4 +104,4 @@ if __name__ == "__main__":
     # parser.add_argument('--size', type=int, default=40, help='size')
 
     args = parser.parse_args()
-    main(args.max_iter,args.size)
+    main(args.max_iter)
