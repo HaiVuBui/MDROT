@@ -165,16 +165,17 @@ def prepare_mnist(k=0,N=10):
         if Y[i]==0:
             img.append(X[i])
 
-    n=3
+    n=3        
     supports_list=list()
-    for i in range(j*3,j*3+3):
-        supports_list.append(convert_support(img[i]))
+    for i in range(3*k,3*k+3):
+        supports_list.append(convert_support(ellipses[i]))
     weight=list(np.ones(n)/n)
     support=compute_support(supports_list,weight)
     mass=list()
-    for i in range(j*3,j*3+3):
-        mass.append(convert_mass(img[i])/convert_mass(img[i]).sum())
+    for i in range(3*k,3*k+3):
+        mass.append(convert_mass(ellipses[i])/convert_mass(ellipses[i]).sum())
     p,q,s=mass
     p_s,q_s,s_s=supports_list
     C=cost_tensor(p_s,q_s,s_s)
+
     return C,p,q,s
