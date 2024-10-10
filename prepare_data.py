@@ -4,6 +4,7 @@ import numpy as np
 import math
 from time import time
 from numba import cuda
+from keras.datasets import mnist
 
 from make_ellipse import make_nested_ellipses
 
@@ -157,5 +158,23 @@ def prepare_input(k=0,size=60,N=10,seed=20):
 
     return C,p,q,s
 
-    
-    
+def prepare_mnist(k=0,N=10):
+    (X,Y), (Xt,Yt) = mnist.load_data()
+    img=list()
+    for i,j in enumerate(X):
+        if Y[i]==0:
+            img.append(X[i])
+
+    n=3
+    supports_list=list()
+    for i in range(j*3,j*3+3):
+        supports_list.append(convert_support(img[i]))
+    weight=list(np.ones(n)/n)
+    support=compute_support(supports_list,weight)
+    mass=list()
+    for i in range(j*3,j*3+3):
+        mass.append(convert_mass(img[i])/convert_mass(img[i]).sum())
+    p,q,s=mass
+    p_s,q_s,s_s=supports_list
+    C=cost_tensor(p_s,q_s,s_s)
+    return C,p,q,s
