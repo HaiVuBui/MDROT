@@ -1,9 +1,16 @@
 import numpy as np
 import os
+import sys
+
+sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
+
+
 import argparse
 from MDrot import Mdrot_gpu
 from prepare_data import prepare_input,prepare_mnist
 from MOT_models_Cupy_new import solve_multi_sinkhorn, solve_rrsinkhorn, solve_multi_greenkhorn, solve_pd_aam
+
+
 
 def single_experiment(alg,max_iter,ep): 
     exp_set=range(0,10)
@@ -58,7 +65,7 @@ def main(max_iter):
     algs={'M':range(-7,-3), 'A':range(-1,2), 'B':range(-1,2), 'C':range(0,3)}  
     #sace folder
     #Ensure output directory exists
-    output_folder = f'output_mnist/'+'max_iter-'+f'{max_iter}'
+    output_folder = f'output/output_mnist/'+'max_iter-'+f'{max_iter}'
     os.makedirs(output_folder, exist_ok=True)
 
     algs={'M':range(-9,-1), 'A':range(-3,3), 'B':range(-3,3), 'C':range(-1,5)}  

@@ -1,8 +1,2 @@
-src/ata/mnist
-src/data/size20
-src/data/size30
-src/data/size40
-src/data/size50
-src/data/size60
-src/data/size70
+data/*
 __pycache__/
