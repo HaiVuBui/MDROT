@@ -1,5 +1,9 @@
 import numpy as np
 import os
+import sys
+
+sys.path.append(os.path.join(os.path.dirname(__file__),'src'))
+
 import argparse
 from MDrot import Mdrot_gpu
 from prepare_data import prepare_input
@@ -54,20 +58,19 @@ def single_experiment(alg,size,max_iter,ep):
 
 def main(max_iter,size):
     #parameters
-    
-    algs={'M':range(-7,-3), 'A':range(-1,2), 'B':range(-1,2), 'C':range(0,3)}  
+      
     #sace folder
     #Ensure output directory exists
-    output_folder = f'output_{size}/'+'max_iter-'+f'{max_iter}'
+    output_folder = f'output/output_{size}/'+'max_iter-'+f'{max_iter}'
     os.makedirs(output_folder, exist_ok=True)
 
-    algs={'M':range(-9,-1), 'A':range(-3,3), 'B':range(-3,3), 'C':range(-1,5)}  
+    algs={'M':[10**-5], 'A':[0.2,0.02,0.5,0.05],'B':[0.2,0.02,0.5,0.05], 'C':[2,20,5,50,200]}  
     # Plot and save the image
 
     for alg in algs:
         for i in algs[alg]:
             #set epsilon
-            ep=10**i
+            ep=i
 
             #save folder and name
             save_folder = output_folder + f'/{alg}-{max_iter}'
