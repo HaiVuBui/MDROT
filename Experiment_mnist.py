@@ -62,8 +62,8 @@ def single_experiment(alg,max_iter,ep):
 def main(max_iter):
     #parameters
     
-    algs={'M':range(-7,-3), 'A':range(-1,2), 'B':range(-1,2), 'C':range(0,3)}  
-    #sace folder
+    algs={'M':[1e-5,], 'A':[0.2,0.02,0.5,0.05], 'B':[0.2,0.02,0.5,0.05], 'C':range(0,3)}  
+    #save folder
     #Ensure output directory exists
     output_folder = f'output/output_mnist/'+'max_iter-'+f'{max_iter}'
     os.makedirs(output_folder, exist_ok=True)
@@ -74,7 +74,7 @@ def main(max_iter):
     for alg in algs:
         for i in algs[alg]:
             #set epsilon
-            ep=10**i
+            ep=i
 
             #save folder and name
             save_folder = output_folder + f'/{alg}-{max_iter}'
