@@ -1,7 +1,7 @@
 #!/bin/bash
 
-python Experiment_mnist.py --max_iter 20000 &
+python Experiment_mnist.py --max_iter 50000 &
 
-#python Experiment.py --max_iter 20000 --size 20 &
+python Experiment.py --max_iter 50000 --size 60 &
 
 wait
