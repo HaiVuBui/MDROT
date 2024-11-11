@@ -62,7 +62,7 @@ def single_experiment(alg,max_iter,ep):
 def main(max_iter):
     #parameters
     
-    algs={'M':[1e-5,], 'A':[0.2,0.02,0.5,0.05], 'B':[0.2,0.02,0.5,0.05], 'C':range(0,3)}  
+    algs={'M':range(-7,4), 'A':range(-3,3), 'B':range(-3,3), 'C':range(-1,5)}  
     #save folder
     #Ensure output directory exists
     output_folder = f'output/output_mnist/'+'max_iter-'+f'{max_iter}'

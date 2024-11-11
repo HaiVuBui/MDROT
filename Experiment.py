@@ -64,7 +64,7 @@ def main(max_iter,size):
     output_folder = f'output/output_{size}/'+'max_iter-'+f'{max_iter}'
     os.makedirs(output_folder, exist_ok=True)
 
-    algs={'M':[10**-5], 'A':[0.2,0.02,0.5,0.05],'B':[0.2,0.02,0.5,0.05], 'C':[2,20,5,50,200]}  
+    algs={'M':range(-7,4), 'A':range(-3,3),'B':range(-3,3), 'C':range(-1,5)}  
     # Plot and save the image
 
     for alg in algs:
