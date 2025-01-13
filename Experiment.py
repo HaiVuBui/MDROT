@@ -7,7 +7,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__),'src'))
 import argparse
 from MDrot import Mdrot_gpu
 from prepare_data import prepare_input
-from MOT_models_Cupy_new import solve_multi_sinkhorn, solve_rrsinkhorn, solve_multi_greenkhorn, solve_pd_aam
+from MOT_models_GPU import solve_multi_sinkhorn, solve_rrsinkhorn, solve_multi_greenkhorn, solve_pd_aam
 
 def single_experiment(alg,size,max_iter,ep): 
     exp_set=range(0,10)
@@ -49,37 +49,30 @@ def single_experiment(alg,size,max_iter,ep):
                     Result[key]+=abs(temp[key]-opt)
                 else:
                     Result[key]+=temp[key]
-    # for key in ['Obj_list', 'runtime', 'distance']:
-    #     print(key)
-    #     Result[key]/=10
-    #     print(key)
-
     return Result
 
 def main(max_iter,size):
-    #parameters
-      
-    #sace folder
-    #Ensure output directory exists
-    output_folder = f'output/output_{size}/'+'max_iter-'+f'{max_iter}'
+    output_folder = 'output/'+f'{size}/'+f'{max_iter}'
     os.makedirs(output_folder, exist_ok=True)
 
-    algs={'M':range(-7,4), 'A':range(-3,3),'B':range(-3,3), 'C':range(-1,5)}  
+    algs={
+        'M': [ 1e-5 ] ,
+        'A':[ 1 ] ,
+        'B':[ 1 ],
+        'C':[ 20 ]
+          }  
     # Plot and save the image
 
     for alg in algs:
-        for i in algs[alg]:
-            #set epsilon
-            ep=i
-
+        for ep in algs[alg]:
             #save folder and name
-            save_folder = output_folder + f'/{alg}-{max_iter}'
+            save_folder = output_folder + f'/{alg}'
             os.makedirs(save_folder, exist_ok=True)
 
             #check if computed 
             is_necessary = False
             for key in ['Obj_list', 'runtime', 'distance']:
-                npy_filename = os.path.join(save_folder, f'{alg}_{key}{ep}.npy')
+                npy_filename = os.path.join(save_folder, f'{alg}_{key}_{ep}.npy')
                 if not os.path.exists(npy_filename):
                     is_necessary = True
             if not is_necessary:
