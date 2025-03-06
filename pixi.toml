@@ -1,0 +1,21 @@
+[project]
+authors = ["haivubui <buivuhai1105@gmail.com>"]
+channels = ["conda-forge", "Pypi"]
+name = "MDROT"
+platforms = ["linux-64"]
+version = "0.1.0"
+
+[tasks]
+
+[dependencies]
+tensorflow = ">=2.18.0,<3"
+keras = ">=3.8.0,<4"
+pytorch = ">=2.6.0,<3"
+scipy = ">=1.15.2,<2"
+python = "3.12.*"
+cudatoolkit = ">=11.8.0,<12"
+cupy = ">=13.4.0,<14"
+numba = ">=0.61.0,<0.62"
+
+
+
