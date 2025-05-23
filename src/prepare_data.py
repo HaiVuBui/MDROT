@@ -1,12 +1,10 @@
-
-
 import numpy as np
 import math
 from time import time
 from numba import cuda
 from keras.datasets import mnist
 
-from make_ellipse import make_nested_ellipses
+from src.make_ellipse import make_nested_ellipses
 
 def  weighted_outer_sum( array, vector, a,b):
     return np.add.outer(a*array,b*vector)
