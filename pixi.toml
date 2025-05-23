@@ -18,5 +18,15 @@ scipy = ">=1.15.2,<2"
 keras = ">=3.8.0,<4"
 jax = ">=0.5.2,<0.6"
 pip = ">=25.1.1,<26"
+pandas = ">=2.2.3,<3"
+
+[pypi-dependencies]
+argparse = ">=1.4.0, <2"
+numpy = "*"
+scipy = "*"
+matplotlib = ">=3.10.3, <4"
+torch = "*"
+torchvision = ">=0.21.0, <0.22"
+torchaudio = ">=2.6.0, <3"
 
 
