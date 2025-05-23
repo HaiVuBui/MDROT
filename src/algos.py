@@ -35,11 +35,11 @@ def tensor_sum(list_of_lists):
     # return a tensor of size len(list_of_lists[0]) x ... x len(list_of_lists[-1]) where the value at index (i_1, ..., i_n) is the sum of the values at the same index in the lists
     shape = tuple(len(lst) for lst in list_of_lists)
     tensor = jnp.zeros(shape)
-    M = len(shape)
+    m = len(shape)
     idxes = list(range(len(shape)))
     for idx, l in enumerate(list_of_lists):
         l = np.array(l.copy())
-        tensor += torch.from_numpy(l).reshape(*([1]*idx + [-1] + [1]*(M - idx - 1))).expand(*shape).numpy()
+        tensor += torch.from_numpy(l).reshape(*([1]*idx + [-1] + [1]*(m - idx - 1))).expand(*shape).numpy()
     return tensor
 
 def binary_search(a, b, f, delta = 1e-3):
@@ -117,7 +117,7 @@ def rho(a, b):
 
 def solve_lp(costs, target_mu):
     shape = costs.shape
-    A = jnp.zeros((jnp.sum(shape), jnp.prod(shape)))
+    A = jnp.zeros((jnp.sum(shape), jnp.prod(jnp.array(shape))))
     for j, s in enumerate(shape):
         for i in range(s):
             for idx in product(*map(range, shape)):
@@ -337,6 +337,7 @@ def solve_rrsinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, verbos
             idxes = list(range(M))
             idxes.remove(k)
             tmp_max = exponents.max(axis = tuple(idxes))
+            tmp_max = np.array(tmp_max.copy()) 
             tmp_tensor = torch.from_numpy(tmp_max).reshape(*([1]*k + [-1] + [1]*(M - k - 1))).expand(*shape).numpy()
             m[k] += jnp.log(get_marginal_k(target_mu, k, shape)) - jnp.log(jnp.exp(exponents - tmp_tensor).sum(axis = tuple(idxes))) - tmp_max
     
@@ -363,24 +364,24 @@ def solve_rrsinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, verbos
         if ((tensor_sum(m) - eta * costs) > 0).any().any():
             raise Exception("tensor_sum(m) can't be greater than eta * costs")
 
-        if iter % iter_gap == 0:
-            memo = {"m": m, "obj_list":obj_list, "lb_list": lb_list, 
-                    "eps_list": eps_list, "dis_list": dis_list, "epsp_list": epsp_list,
-                    "iter": iter, "obj": obj, "lb": lb, "dist": distance, "epsp": epsilon_prime,
-                    "eps": epsilon, "eta": eta, 
-                    "iter_gap": iter_gap, "epsilon_scale_num": epsilon_scale_num, 
-                    "epsilon_scale_gap": epsilon_scale_gap, "cost_scale": cost_scale,
-                   "data_file": args.data_file, "start_epsilon": args.start_epsilon,
-                   "target_epsilon": target_epsilon, "error": None}
-            pkl.dump(memo, open( 'log/' + out_dir + '.pkl', 'wb'))
-            if verbose >= 2:
-                print("iter: ", iter, 
-                      "obj: ", round(obj, 6), 
-                      "lb: ", round(lb, 6), 
-                      "dist: ", round(dist(B), 6),
-                      "eps: ", round(epsilon, 10),
-                      "eps_prime: ", round(epsilon_prime, 10),
-                     )
+        #if iter % iter_gap == 0:
+        #    memo = {"m": m, "obj_list":obj_list, "lb_list": lb_list, 
+        #            "eps_list": eps_list, "dis_list": dis_list, "epsp_list": epsp_list,
+        #            "iter": iter, "obj": obj, "lb": lb, "dist": distance, "epsp": epsilon_prime,
+        #            "eps": epsilon, "eta": eta, 
+        #            "iter_gap": iter_gap, "epsilon_scale_num": epsilon_scale_num, 
+        #            "epsilon_scale_gap": epsilon_scale_gap, "cost_scale": cost_scale,
+        #           "data_file": args.data_file, "start_epsilon": args.start_epsilon,
+        #           "target_epsilon": target_epsilon, "error": None}
+        #    pkl.dump(memo, open( 'log/' + out_dir + '.pkl', 'wb'))
+        #    if verbose >= 2:
+        #        print("iter: ", iter, 
+        #              "obj: ", round(obj, 6), 
+        #              "lb: ", round(lb, 6), 
+        #              "dist: ", round(dist(B), 6),
+        #              "eps: ", round(epsilon, 10),
+        #              "eps_prime: ", round(epsilon_prime, 10),
+        #             )
         
     ########## update parameters ###########
         iter += 1
@@ -446,7 +447,7 @@ def solve_multi_greenkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, 
     costs /= cost_scale
     shape = costs.shape
     M = len(shape)
-    epsilon = args.start_epsilon
+    epsilon = epsilon
     eta = 4 * sum([log(n) for n in shape]) / epsilon
     epsilon_prime = epsilon / 8 / costs.max()
     min_cost = costs.min()
@@ -474,9 +475,10 @@ def solve_multi_greenkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, 
             im = jnp.argmax(tmp)
             max_v.append(tmp[im])
             buffer.append((marginal[im], im))
+        max_v = np.array(max_v)
         kmax = jnp.argmax(max_v)
         rki, imax = buffer[kmax]
-        m[kmax][imax] += jnp.log(target_mu[ravel_index(kmax, imax, shape)] / rki)
+        m[kmax].at[imax].set( m[kmax][imax] + jnp.log(target_mu[ravel_index(kmax, imax, shape)] / rki))
         B = jnp.exp(tensor_sum(m) - eta * costs)
         
         distance = dist(B)
@@ -493,24 +495,24 @@ def solve_multi_greenkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, 
         obj_list.append(obj)
         lb_list.append(lb)
         
-        if iter % iter_gap == 0:
-            memo = {"m": m, "obj_list":obj_list, "lb_list": lb_list, 
-                    "eps_list": eps_list, "dis_list": dis_list, "epsp_list": epsp_list,
-                    "iter": iter, "obj": obj, "lb": lb, "dist": distance, "epsp": epsilon_prime,
-                    "eps": epsilon, "eta": eta, 
-                    "iter_gap": iter_gap, "epsilon_scale_num": epsilon_scale_num, 
-                    "epsilon_scale_gap": epsilon_scale_gap, "cost_scale": cost_scale,
-                   "data_file": args.data_file, "start_epsilon": args.start_epsilon,
-                   "target_epsilon": target_epsilon, "error": None}
-            pkl.dump(memo, open( 'log/' + out_dir + '.pkl', 'wb'))
-            if verbose >= 2:
-                print("iter: ", iter, 
-                      "obj: ", round(obj, 6), 
-                      "lb: ", round(lb, 6), 
-                      "dist: ", round(dist(B), 6),
-                      "eps: ", round(epsilon, 10),
-                      "eps_prime: ", round(epsilon_prime, 10),
-                     )
+        #if iter % iter_gap == 0:
+        #    memo = {"m": m, "obj_list":obj_list, "lb_list": lb_list, 
+        #            "eps_list": eps_list, "dis_list": dis_list, "epsp_list": epsp_list,
+        #            "iter": iter, "obj": obj, "lb": lb, "dist": distance, "epsp": epsilon_prime,
+        #            "eps": epsilon, "eta": eta, 
+        #            "iter_gap": iter_gap, "epsilon_scale_num": epsilon_scale_num, 
+        #            "epsilon_scale_gap": epsilon_scale_gap, "cost_scale": cost_scale,
+        #           "data_file": args.data_file, "start_epsilon": args.start_epsilon,
+        #           "target_epsilon": target_epsilon, "error": None}
+        #    pkl.dump(memo, open( 'log/' + out_dir + '.pkl', 'wb'))
+        #    if verbose >= 2:
+        #        print("iter: ", iter, 
+        #              "obj: ", round(obj, 6), 
+        #              "lb: ", round(lb, 6), 
+        #              "dist: ", round(dist(B), 6),
+        #              "eps: ", round(epsilon, 10),
+        #              "eps_prime: ", round(epsilon_prime, 10),
+        #             )
         
         
     ########## update parameters ###########
@@ -580,9 +582,13 @@ def solve_pd_aam(costs, target_mu, epsilon_final = 1e-6, verbose = 0, print_itr 
     p = jnp.array(target_mu)
     uniform = jnp.array([1/n for n in shape for _ in range(n)])
     
-    def l1_error(X, p):
-        # compute l1 error of X from the target marginal
-        return jnp.sum(jnp.abs(marginal_k(X, k) - get_marginal_k(p, k, shape)).sum() for k in range(X.ndim)) 
+
+    def l1_error(X, p_tilde):
+        # Compute l1 error for each dimension and sum them
+        errors = [jnp.abs(marginal_k(X, k) - get_marginal_k(p_tilde, k, X.shape)).sum() for k in range(X.ndim)]
+        return jnp.sum(jnp.array(errors))
+
+
     def F(X, gamma):
         return (costs * X).sum().sum() - gamma * (X * jnp.log(X)).sum().sum()
     def B_stable(U, gamma):
@@ -608,7 +614,7 @@ def solve_pd_aam(costs, target_mu, epsilon_final = 1e-6, verbose = 0, print_itr 
     def g(theta, p, gamma):
         return jnp.concatenate([g_k(k, theta, p, gamma) for k in range(m)])
     def g_l2_norm(theta, p, gamma):
-        return jnp.sum([g_l2_norm_k(k, theta, p, gamma) for k in range(m)])
+        return jnp.sum(jnp.array([g_l2_norm_k(k, theta, p, gamma) for k in range(m)]))
     def g_l2_norm_k(k, theta, p, gamma):
         return jnp.square(g_k(k, theta, p, gamma)).sum() # marginal_k(U_tmp, k)
     def update_eta(theta, i, gamma): # lemma 2 iteration step
@@ -616,7 +622,7 @@ def solve_pd_aam(costs, target_mu, epsilon_final = 1e-6, verbose = 0, print_itr 
         exp_U_tmp, min_U_tmp = B_stable(eta, gamma)
         log_B_marginal = min_U_tmp + jnp.log(jnp.sum(exp_U_tmp, axis=tuple(axis for axis in range(exp_U_tmp.ndim) if axis != i)))
         eta_update = get_marginal_k(theta, i, shape) + jnp.log(get_marginal_k(p, i, shape)) - log_B_marginal
-        eta[ravel_index(i, 0, shape): ravel_index(i, shape[i], shape)] = eta_update
+        eta.at[ravel_index(i, 0, shape): ravel_index(i, shape[i], shape)].set(eta_update)
         return eta
     
     A = 0
@@ -674,7 +680,8 @@ def solve_pd_aam(costs, target_mu, epsilon_final = 1e-6, verbose = 0, print_itr 
         if verbose >= 100 and itr >= print_itr: print("beta, eta, zeta, theta", beta, eta, zeta, theta)
 
         # pick margin
-        i = jnp.argmax([g_l2_norm_k(k, theta, p_tilde, gamma) for k in range(m)])
+        
+        i = jnp.argmax(jnp.array([g_l2_norm_k(k, theta, p_tilde, gamma) for k in range(m)]))
         
         eta = update_eta(theta, i, gamma)
         
@@ -695,7 +702,7 @@ def solve_pd_aam(costs, target_mu, epsilon_final = 1e-6, verbose = 0, print_itr 
         
         dual_obj= - psi(theta, p, gamma) * cost_scale
         
-        lb_obj = dual_obj - epsilon * jnp.log(jnp.prod(shape))
+        lb_obj = dual_obj - epsilon * jnp.log(jnp.prod(jnp.array(shape)))
         
         X = (a * primal(theta, gamma) + A_t * X) / A
         
@@ -727,7 +734,7 @@ def solve_pd_aam(costs, target_mu, epsilon_final = 1e-6, verbose = 0, print_itr 
         p_tilde = (1 - epsilon_p/(4 * m)) * jnp.array(target_mu) + epsilon_p / (4 * m) * uniform
     
     print("*", "obj: ", obj, "dual_obj", dual_obj, "lb_obj", lb_obj, "max lb_obj", max_lb_obj_list[-1], "gap:", gap, "l1_error", l1_error(X, p_tilde), "F", F(X, gamma), "psi", psi(eta, p, gamma), "eps", epsilon / 2, "*")
-    lb_obj = dual_obj - epsilon * jnp.log(jnp.prod(shape))
+    lb_obj = dual_obj - epsilon * jnp.log(jnp.prod(jnp.array(shape)))
         
     X = (a * primal(theta, gamma) + A_t * X) / A
 
