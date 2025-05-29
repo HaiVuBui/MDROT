@@ -1,5 +1,6 @@
 import jax
 import jax.numpy as jnp
+import jax.numpy.linalg as jna 
 import numpy as np
 from functools import reduce
 from itertools import product
@@ -10,23 +11,8 @@ import pickle as pkl
 import time
 import argparse
 import torch
+from time import time
 
-
-def parse_args():
-    parser = argparse.ArgumentParser(description='Run MOT Solver')
-    parser.add_argument('--target_epsilon', type=float, default=1e-3, help='target epsilon')
-    parser.add_argument('--start_epsilon', type=float, default=1, help='start epsilon')
-    parser.add_argument('--epsilon_scale_num', type=float, default=0.99, help='epsilon scale factor')
-    parser.add_argument('--epsilon_scale_gap', type=float, default=100, help='iteraction gap between epsilon scaling')
-    parser.add_argument('--cost_type', type=str, default='square', help='type of cost')
-    parser.add_argument('--verbose', type=int, default=2, help='verbose')
-    parser.add_argument('--cost_scale', type=float, default=1, help='cost scale')
-    parser.add_argument('--max_iter', type=int, default=5000, help='max iter')
-    parser.add_argument('--iter_gap', type=int, default=100, help='iteration gap for recording')
-    parser.add_argument('--solver', type=str, default='sinkhorn', help='MOT solver')
-    parser.add_argument('--data_file', type=str, default='weight_loss', help='data file name')
-    # Add more arguments as needed
-    return parser.parse_args()
 
 def rotate(l, n):
     return l[n:] + l[:n]
@@ -127,7 +113,7 @@ def solve_lp(costs, target_mu):
     res = linprog(c, A_eq=A, b_eq=target_mu, bounds=[0, 1])
     return res.fun, res.x.reshape(shape)
 
-def solve_multi_sinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, verbose = 0, epsilon_scale_num = 0.99, epsilon_scale_gap = 100, cost_scale = 1, iter_gap = 100, max_iter = 5000, out_dir = 'test'):
+def solve_multi_sinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, ground_truth = None, epsilon_scale_num = 0.99, epsilon_scale_gap = 100, cost_scale = 1, iter_gap = 100, max_iter = 5000, out_dir = 'test'):
     """solve using Sinkhorn's algorithm
 
     Args:
@@ -167,11 +153,13 @@ def solve_multi_sinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, ve
     B = A_stable / jnp.sum(jnp.abs(A_stable))
     iter = 0
     
-    obj_list = []
+    objective_values = []
     lb_list = []
     eps_list = []
     dis_list = []
     epsp_list = []
+    computation_time = []
+    distances = []
     
     ########## helper function ###########
     
@@ -198,6 +186,7 @@ def solve_multi_sinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, ve
     
     ########## training starts ###########
     
+    start = time()
     while True:
     # while iter < 500:
         if iter == 0: # update first step
@@ -217,36 +206,26 @@ def solve_multi_sinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, ve
         obj = jnp.sum(projection(B, target_mu) * costs) * cost_scale
         # lower bound
         lb = sum([sum(get_marginal_k(target_mu, k, shape) * m[k]) for k in range(M)]) * cost_scale / eta     
+        end = time()
+
         
     ########## logging results ###########
     
         eps_list.append(epsilon)
         dis_list.append(distance)
         epsp_list.append(epsilon_prime)
-        obj_list.append(obj)
+        objective_values.append(obj)
         lb_list.append(lb)
+        if ground_truth is not None:
+            dis = jna.norm( projection(B, target_mu).reshape(-1) - ground_truth)
+            distances.append(dis)
+        computation_time.append(end - start)
+
+
         
         if ((tensor_sum(m) - eta * costs) > 0).any().any():
             raise Exception("tensor_sum(m) can't be greater than eta * costs")
 
-        #if iter % iter_gap == 0:
-        #    memo = {"m": m, "obj_list":obj_list, "lb_list": lb_list, 
-        #            "eps_list": eps_list, "dis_list": dis_list, "epsp_list": epsp_list,
-        #            "iter": iter, "obj": obj, "lb": lb, "dist": distance, "epsp": epsilon_prime,
-        #            "eps": epsilon, "eta": eta, 
-        #            "iter_gap": iter_gap, "epsilon_scale_num": epsilon_scale_num, 
-        #            "epsilon_scale_gap": epsilon_scale_gap, "cost_scale": cost_scale,
-        #           "data_file": args.data_file, "start_epsilon": args.start_epsilon,
-        #           "target_epsilon": target_epsilon, "error": None}
-        #    pkl.dump(memo, open( 'log/' + out_dir + '.pkl', 'wb'))
-        #    if verbose >= 2:
-        #        print("iter: ", iter, 
-        #              "obj: ", round(obj, 6), 
-        #              "lb: ", round(lb, 6), 
-        #              "dist: ", round(dist(B), 6),
-        #              "eps: ", round(epsilon, 10),
-        #              "eps_prime: ", round(epsilon_prime, 10),
-        #             )
         
     ########## update parameters ###########
         iter += 1
@@ -279,8 +258,12 @@ def solve_multi_sinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, ve
     B = jnp.exp(tensor_sum(m) - eta * costs)
     weights = projection(B, target_mu)
     lb = sum([sum(get_marginal_k(target_mu, k, shape) * m[k]) for k in range(M)]) * cost_scale / eta
-    return jnp.sum(weights * costs) * cost_scale, lb, weights
-
+    print('multi sinkhorn finished')
+    return {'solution': weights,
+            'objevtive_values': objective_values,
+            'distances': distances,
+            'computation_time': computation_time
+           }
 
 def solve_rrsinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, verbose = 0, epsilon_scale_num = 0.99, epsilon_scale_gap = 100, cost_scale = 1, iter_gap = 100, max_iter = 5000, out_dir = 'test'):
     """solve using Sinkhorn's algorithm in a round robin fashion
@@ -321,7 +304,7 @@ def solve_rrsinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, verbos
     B = A_stable / jnp.sum(jnp.abs(A_stable))
     iter = 0
     
-    obj_list = []
+    objective_values = []
     lb_list = []
     eps_list = []
     dis_list = []
@@ -358,14 +341,14 @@ def solve_rrsinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, verbos
         eps_list.append(epsilon)
         dis_list.append(distance)
         epsp_list.append(epsilon_prime)
-        obj_list.append(obj)
+        objective_values.append(obj)
         lb_list.append(lb)
         
         if ((tensor_sum(m) - eta * costs) > 0).any().any():
             raise Exception("tensor_sum(m) can't be greater than eta * costs")
 
         #if iter % iter_gap == 0:
-        #    memo = {"m": m, "obj_list":obj_list, "lb_list": lb_list, 
+        #    memo = {"m": m, "objective_values":objective_values, "lb_list": lb_list, 
         #            "eps_list": eps_list, "dis_list": dis_list, "epsp_list": epsp_list,
         #            "iter": iter, "obj": obj, "lb": lb, "dist": distance, "epsp": epsilon_prime,
         #            "eps": epsilon, "eta": eta, 
@@ -457,7 +440,7 @@ def solve_multi_greenkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, 
     m = [jnp.zeros(s) for s in shape]
     iter = 0
     
-    obj_list = []
+    objective_values = []
     lb_list = []
     eps_list = []
     dis_list = []
@@ -492,11 +475,11 @@ def solve_multi_greenkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, 
         eps_list.append(epsilon)
         dis_list.append(distance)
         epsp_list.append(epsilon_prime)
-        obj_list.append(obj)
+        objective_values.append(obj)
         lb_list.append(lb)
         
         #if iter % iter_gap == 0:
-        #    memo = {"m": m, "obj_list":obj_list, "lb_list": lb_list, 
+        #    memo = {"m": m, "objective_values":objective_values, "lb_list": lb_list, 
         #            "eps_list": eps_list, "dis_list": dis_list, "epsp_list": epsp_list,
         #            "iter": iter, "obj": obj, "lb": lb, "dist": distance, "epsp": epsilon_prime,
         #            "eps": epsilon, "eta": eta, 
@@ -635,7 +618,7 @@ def solve_pd_aam(costs, target_mu, epsilon_final = 1e-6, verbose = 0, print_itr 
     # TODO: what's the initialization for X?
     X = jnp.ones(costs.shape)
 
-    obj_list = []
+    objective_values = []
     dual_obj_list = []
     condition_list = []
     lb_obj_list = []
@@ -713,14 +696,14 @@ def solve_pd_aam(costs, target_mu, epsilon_final = 1e-6, verbose = 0, print_itr 
         
         
         condition_list.append(gap)
-        obj_list.append(obj)
+        objective_values.append(obj)
         lb_obj_list.append(lb_obj)
         max_lb_obj_list.append(max(lb_obj_list))
         dual_obj_list.append(dual_obj)
         
         if verbose >= 2 and itr >= print_itr and itr % 100 == 0: 
             print("*", "obj: ", obj, "dual_obj", dual_obj, "lb_obj", lb_obj, "gap:", gap, "l1_error", l1_error(X, p_tilde), "F", F(X, gamma), "psi", psi(eta, p, gamma), "eps", epsilon / 2, "*")
-            memo = {"obj_list":obj_list, "lb_list": lb_obj_list, 
+            memo = {"objective_values":objective_values, "lb_list": lb_obj_list, 
                     "iter": iter, "obj": obj, "lb": lb_obj, 
                     "eps": epsilon / 2, "eta": eta, 
                     "cost_scale": cost_scale,
