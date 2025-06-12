@@ -158,7 +158,7 @@ def solve_multi_sinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, gr
     eps_list = []
     dis_list = []
     epsp_list = []
-    computation_time = []
+    computational_time = []
     distances = []
     
     ########## helper function ###########
@@ -219,7 +219,7 @@ def solve_multi_sinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, gr
         if ground_truth is not None:
             dis = jna.norm( projection(B, target_mu).reshape(-1) - ground_truth)
             distances.append(dis)
-        computation_time.append(end - start)
+        computational_time.append(end - start)
 
 
         
@@ -258,14 +258,14 @@ def solve_multi_sinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, gr
     B = jnp.exp(tensor_sum(m) - eta * costs)
     weights = projection(B, target_mu)
     lb = sum([sum(get_marginal_k(target_mu, k, shape) * m[k]) for k in range(M)]) * cost_scale / eta
-    print('multi sinkhorn finished')
+    # print('multi sinkhorn finished')
     return {'solution': weights,
-            'objevtive_values': objective_values,
+            'objective_values': objective_values,
             'distances': distances,
-            'computation_time': computation_time
+            'computational_time': computational_time
            }
 
-def solve_rrsinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, verbose = 0, epsilon_scale_num = 0.99, epsilon_scale_gap = 100, cost_scale = 1, iter_gap = 100, max_iter = 5000, out_dir = 'test'):
+def solve_rrsinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, ground_truth = None, epsilon_scale_num = 0.99, epsilon_scale_gap = 100, cost_scale = 1, iter_gap = 100, max_iter = 5000, out_dir = 'test'):
     """solve using Sinkhorn's algorithm in a round robin fashion
 
     Args:
@@ -309,6 +309,8 @@ def solve_rrsinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, verbos
     eps_list = []
     dis_list = []
     epsp_list = []
+    computational_time = []
+    distances = []
     
     ########## helper function ###########
     
@@ -326,6 +328,7 @@ def solve_rrsinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, verbos
     
     ########## training starts ###########
     
+    start = time()
     while True:
     # while iter < 500:
         stable_update()
@@ -333,8 +336,10 @@ def solve_rrsinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, verbos
         distance = dist(B)
         # primal objective
         obj = jnp.sum(projection(B, target_mu) * costs) * cost_scale
+
         # lower bound
         lb = sum([sum(get_marginal_k(target_mu, k, shape) * m[k]) for k in range(M)]) * cost_scale / eta     
+        end = time()
         
     ########## logging results ###########
     
@@ -343,29 +348,14 @@ def solve_rrsinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, verbos
         epsp_list.append(epsilon_prime)
         objective_values.append(obj)
         lb_list.append(lb)
+        if ground_truth is not None:
+            dis = jna.norm( projection(B, target_mu).reshape(-1) - ground_truth)
+            distances.append(dis)
+        computational_time.append(end-start)
         
         if ((tensor_sum(m) - eta * costs) > 0).any().any():
             raise Exception("tensor_sum(m) can't be greater than eta * costs")
 
-        #if iter % iter_gap == 0:
-        #    memo = {"m": m, "objective_values":objective_values, "lb_list": lb_list, 
-        #            "eps_list": eps_list, "dis_list": dis_list, "epsp_list": epsp_list,
-        #            "iter": iter, "obj": obj, "lb": lb, "dist": distance, "epsp": epsilon_prime,
-        #            "eps": epsilon, "eta": eta, 
-        #            "iter_gap": iter_gap, "epsilon_scale_num": epsilon_scale_num, 
-        #            "epsilon_scale_gap": epsilon_scale_gap, "cost_scale": cost_scale,
-        #           "data_file": args.data_file, "start_epsilon": args.start_epsilon,
-        #           "target_epsilon": target_epsilon, "error": None}
-        #    pkl.dump(memo, open( 'log/' + out_dir + '.pkl', 'wb'))
-        #    if verbose >= 2:
-        #        print("iter: ", iter, 
-        #              "obj: ", round(obj, 6), 
-        #              "lb: ", round(lb, 6), 
-        #              "dist: ", round(dist(B), 6),
-        #              "eps: ", round(epsilon, 10),
-        #              "eps_prime: ", round(epsilon_prime, 10),
-        #             )
-        
     ########## update parameters ###########
         iter += 1
         if distance < epsilon_prime:
@@ -397,12 +387,16 @@ def solve_rrsinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, verbos
     B = jnp.exp(tensor_sum(m) - eta * costs)
     weights = projection(B, target_mu)
     lb = sum([sum(get_marginal_k(target_mu, k, shape) * m[k]) for k in range(M)]) * cost_scale / eta
-    return jnp.sum(weights * costs) * cost_scale, lb, weights
+    return {'solution': weights,
+            'objective_values': objective_values,
+            'distances': distances,
+            'computational_time': computational_time
+           }
 
 def Rho(a, b):
     return b - a + a * jnp.log(a / b)
 
-def solve_multi_greenkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, verbose = 0, epsilon_scale_num = 0.99, epsilon_scale_gap = 100, cost_scale = 1, iter_gap = 100, max_iter = 5000, out_dir = 'test'):
+def solve_multi_greenkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, ground_truth = None, epsilon_scale_gap = 100, cost_scale = 1, iter_gap = 100, max_iter = 5000, out_dir = 'test'):
     """Solve using the Greenkhorn algorithm
 
     Args:
@@ -445,10 +439,13 @@ def solve_multi_greenkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, 
     eps_list = []
     dis_list = []
     epsp_list = []
+    distances = []
+    computational_time = []
     
     def dist(B):
         return sum(jnp.sum(jnp.abs(marginal_k(B, i) - get_marginal_k(target_mu, i, shape))) for i in range(B.ndim))
         
+    start = time()
     while True:
         max_v = []
         buffer = []
@@ -469,6 +466,10 @@ def solve_multi_greenkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, 
         obj = jnp.sum(projection(B, target_mu) * costs) * cost_scale
         # lower bound
         lb = sum([sum(get_marginal_k(target_mu, k, shape) * m[k]) for k in range(M)]) * cost_scale / eta     
+        if ground_truth is not None:
+            dis = jna.norm( projection(B, target_mu).reshape(-1) - ground_truth)
+            distances.append(dis)
+        end = time()
         
     ########## logging results ###########
     
@@ -477,6 +478,7 @@ def solve_multi_greenkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, 
         epsp_list.append(epsilon_prime)
         objective_values.append(obj)
         lb_list.append(lb)
+        computational_time.append(end - start)
         
         #if iter % iter_gap == 0:
         #    memo = {"m": m, "objective_values":objective_values, "lb_list": lb_list, 
@@ -529,7 +531,11 @@ def solve_multi_greenkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, 
     B = jnp.exp(tensor_sum(m) - eta * costs)
     weights = projection(B, target_mu)
     lb = sum([sum(get_marginal_k(target_mu, k, shape) * m[k]) for k in range(M)]) * cost_scale / eta
-    return jnp.sum(weights * costs) * cost_scale, lb, weights
+    return {'solution': weights,
+            'objective_values': objective_values,
+            'distances': distances,
+            'computational_time': computational_time
+           }
 
 def solve_pd_aam(costs, target_mu, epsilon_final = 1e-6, verbose = 0, print_itr = 0, max_iterate = 50, method = "binary_search", cost_scale = 1, epsilon0 = 0.01, halflife = 1, out_dir = 'test'):
     """Solve using the Accelerated Alternating Minimization (AAM) algorithm
@@ -625,6 +631,7 @@ def solve_pd_aam(costs, target_mu, epsilon_final = 1e-6, verbose = 0, print_itr 
     max_lb_obj_list = []
     beta_list = []
     itr = 0
+    computational_time = [] 
     
     
     epsilon = (epsilon0 - epsilon_final) * jnp.exp(-itr * halflife) + epsilon_final
@@ -632,6 +639,7 @@ def solve_pd_aam(costs, target_mu, epsilon_final = 1e-6, verbose = 0, print_itr 
     epsilon_p = epsilon / (8 * C_norm)
     p_tilde = (1 - epsilon_p/(4 * m)) * jnp.array(target_mu) + epsilon_p / (4 * m) * uniform
     
+    start = time()
     while 2 * l1_error(X, p_tilde) + F(X, gamma) + psi(eta, p_tilde, gamma) > epsilon / 2:
         if verbose >= 2 and itr % 100 == 0: print("="* 30, "itr", itr, "epsilon", epsilon, "gamma", gamma)
         itr += 1
@@ -692,6 +700,8 @@ def solve_pd_aam(costs, target_mu, epsilon_final = 1e-6, verbose = 0, print_itr 
         X = projection(X, p) # TODO: project X to the probability simplex (not in the original code)
         obj = (costs * X).sum().sum() * cost_scale
         gap = 2 * l1_error(X, p_tilde) + F(X, gamma) + psi(eta, p, gamma)
+
+        end = time()
         
         
         
@@ -700,6 +710,7 @@ def solve_pd_aam(costs, target_mu, epsilon_final = 1e-6, verbose = 0, print_itr 
         lb_obj_list.append(lb_obj)
         max_lb_obj_list.append(max(lb_obj_list))
         dual_obj_list.append(dual_obj)
+        computational_time.append(end - start)
         
         if verbose >= 2 and itr >= print_itr and itr % 100 == 0: 
             print("*", "obj: ", obj, "dual_obj", dual_obj, "lb_obj", lb_obj, "gap:", gap, "l1_error", l1_error(X, p_tilde), "F", F(X, gamma), "psi", psi(eta, p, gamma), "eps", epsilon / 2, "*")
@@ -723,7 +734,12 @@ def solve_pd_aam(costs, target_mu, epsilon_final = 1e-6, verbose = 0, print_itr 
 
     X = projection(X, p) # TODO: project X to the probability simplex (not in the original code)
     obj = (costs * X).sum().sum() * cost_scale
-    return obj, lb_obj, X
+    # return obj, lb_obj, X
+    return {'solution': X,
+            'objective_values': objective_values,
+            # 'distances': distances,
+            'computational_time': computational_time
+           }
 
 
 def get_res_single(tmp_list, solver = solve_multi_sinkhorn, return_res = False, print_res = True, cost_type='square'):
