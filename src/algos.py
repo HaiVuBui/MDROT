@@ -116,7 +116,7 @@ def solve_lp(costs, target_mu):
 def solve_multi_sinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, ground_truth = None, epsilon_scale_num = 0.99, epsilon_scale_gap = 100, cost_scale = 1, iter_gap = 100, max_iter = 5000, out_dir = 'test'):
     """solve using Sinkhorn's algorithm
 
-    Args:
+    Args:algo
         costs (array): Cost matrix for the optimal transport problem.
         target_mu (list): Target probability distributions.
         epsilon (float): Starting epsilon for the Sinkhorn iterations. Defaults to 1e-2.
@@ -396,7 +396,7 @@ def solve_rrsinkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, ground
 def Rho(a, b):
     return b - a + a * jnp.log(a / b)
 
-def solve_multi_greenkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, ground_truth = None, epsilon_scale_gap = 100, cost_scale = 1, iter_gap = 100, max_iter = 5000, out_dir = 'test'):
+def solve_multi_greenkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, ground_truth = None,epsilon_scale_num =0.99, epsilon_scale_gap = 100, cost_scale = 1, iter_gap = 100, max_iter = 5000, out_dir = 'test'):
     """Solve using the Greenkhorn algorithm
 
     Args:
@@ -424,7 +424,6 @@ def solve_multi_greenkhorn(costs, target_mu, epsilon=1e-2, target_epsilon=1e-4, 
     costs /= cost_scale
     shape = costs.shape
     M = len(shape)
-    epsilon = epsilon
     eta = 4 * sum([log(n) for n in shape]) / epsilon
     epsilon_prime = epsilon / 8 / costs.max()
     min_cost = costs.min()

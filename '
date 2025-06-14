@@ -6,31 +6,42 @@ import jax.numpy.linalg as jna
 import math
 
 from src.prepare_data import prepare_input
-from src.algos import solve_multi_greenkhorn, solve_multi_sinkhorn, solve_pd_aam, solve_rrsinkhorn
 
 def marginal(X,k):
-    axis = [i for i in range(len(X.shape)) if i !=k]
-    return jnp.sum(X,axis)
+    axis = [i for i in range(len(X.shape)) if i!=k]
+    return jnp.sum(X,axis=axis)
 
-def make_tensor(vec,dims,k):
+def make_tensor(vec, dims, k):
     T = jnp.ones(dims[:k] + dims[k+1:])
     m = len(dims)
-    trans = [i for i in range(m)]
-    trans = trans[1:k+1] + [0]  + trans[k+1:]
-    return jnp.tensordot(vec, T, 0).transpose(trans)
+    # tensordot with axes=0 returns shape (vec.shape, *T.shape)
+    temp = jnp.tensordot(vec, T, 0)
+    # We need to transpose to put vec dimension at position k
+    axes_order = list(range(1, k+1)) + [0] + list(range(k+1, m))
+    return jnp.transpose(temp, axes_order)
 
 def drmmot(init, C, p, **kwargs):
     # Stopping parameters
     opt = kwargs.pop("opt", None)
     max_iters = kwargs.pop("max_iters", 100)
+    eps_abs = kwargs.pop("eps_abs", 1e-6)
 
     # Stepsize parameters
     step = kwargs.pop("step", 1.0)
     max_step = kwargs.pop("max_step", 1.0)
     min_step = kwargs.pop("min_step", 1e-4)
 
+    # Printing parameters
+    verbose = kwargs.pop("verbose", False)
+    compute_r_primal = kwargs.pop("compute_r_primal", False)
+    compute_r_dual = kwargs.pop("compute_r_dual", False)
 
     assert (max_step >= min_step), "Invalid range"
+
+    if verbose:
+        print("----------------------------------------------------")
+        print(" iter | total res | primal res | dual res | time (s)")
+        print("----------------------------------------------------")
     
     if not opt is None:
         opt=jnp.array(opt)
@@ -48,13 +59,18 @@ def drmmot(init, C, p, **kwargs):
 
     ones = [jnp.ones(dims[k]) for k in range(m)]
 
+    B = jnp.hstack((p[0], p[1], p[2]))
+    v=np.zeros(max_iters)
     objfunc=np.zeros(max_iters)
     distances=np.zeros(max_iters)
     runtime=np.zeros(max_iters)
+    r_primal = np.zeros(max_iters)
+    r_dual = np.zeros(max_iters)
+    r_full = np.inf
     done = False
 
     alpha = [sum([np.prod([n[j] for j in range(m) if j!=i and j!=k]) for i in range(m) if i !=k]) for k in range(m)]
-    beta = sum([np.prod([n[j] for j in range(m) if j!=i]) for i in range(m)])
+    beta = (n[0]*n[1] + n[1]*n[2] + n[0]*n[2]) 
     delta = [ np.prod( [n[i] for i in range(m) if i != k] ) for k in range(m) ]
     start = time()
     while not done:
@@ -72,15 +88,29 @@ def drmmot(init, C, p, **kwargs):
 
         # Broadcasting
         vec = [t[k] - c[k] for k in range(m)]
+
+        v[iter]=math.sqrt(jnp.sum(X*C))
+        if compute_r_dual:
+            # r_dual[k] = abs(np.sum(x * C) - (-yy.dot(p)/n - xx.dot(q)/n[0]) / step)
+            r_dual[iter] = abs(jnp.sum(X * C))
         
+        #apply_adjoint_operator_and_override(e, f, yy, xx, x, -1.0/n, -1.0/n[0])
         for k in range(m):
             X -= make_tensor(vec[k], dims,k)/delta[k]
+
+        if compute_r_primal:
+            Ax = jnp.hstack((nu[0], nu[1], nu[2]))
+            r_primal[iter] = jna.norm(Ax - B)
+        if compute_r_primal or compute_r_dual:
+            r_full = np.sqrt((r_primal[iter]**2 + r_dual[iter]**2))
+            if iter == 0:
+                r_full0 = r_full
 
         end = time()
         runtime[iter] = (end-start)
         iter += 1
         # done = (k >= max_iters) or (r_full <= eps_abs + eps_rel * r_full0)
-        done = (iter >= max_iters)
+        done = (iter >= max_iters) or (r_primal[iter-1] <= eps_abs)
         
     
     X=jnp.maximum(X-step*C,0.0)
@@ -89,34 +119,32 @@ def drmmot(init, C, p, **kwargs):
     return {"sol":          X,
             "objective_values":          np.array(objfunc),
             "distances":     np.array(distances),
+            "primal":       np.array(r_primal),
+            "dual":         np.array(r_dual),
+            "num_iters":    iter,
             'computational_time':      runtime}
 def main():
     # exp_set=range(0,10)
-    size = 5
+    size = 10 
     max_iter = 10000
-    ep = 1e-2
+    ep = 1e-4
     exp_idx = 0
     # Define the data folder and parameters
-    # data_folder = f'data/size{size}/seed20/'
+    data_folder = f'data/size{size}/seed20/'
     # X = np.fromfile(data_folder + f'exp_number{exp_idx}.npy', dtype=np.float64)
 
     # Prepare the input data
-    Cost, distributions = prepare_input(m=3,k=exp_idx,N=10,size=size)
+    Cost, distributions= prepare_input(m=4, k=exp_idx,N=10,size=size)
+
     x0 = jnp.zeros(Cost.shape)
-    # opt = (X * Cost.reshape(-1)).sum().item()
 
     # Combine p, q, and s into target_mu
     target_mu = np.concatenate(distributions, axis=0)
 
-    out = drmmot(x0, Cost, distributions ,max_iters=max_iter, step=ep, compute_r_primal=True, eps_abs=1e-15, verbose=False, print_every=100)
-    # out = solve_multi_sinkhorn(Cost, target_mu, epsilon=ep, max_iter=max_iter)
-    # out = solve_rrsinkhorn(Cost, target_mu, epsilon=ep, max_iter=max_iter)
-    # out = solve_multi_greenkhorn(Cost, target_mu, epsilon=ep, max_iter=max_iter)
-    out = solve_pd_aam(Cost,target_mu,epsilon0=ep, max_iterate=max_iter)
 
-    for i in range(max_iter):
-        if i % 1000 == 0:
-            print(out['objective_values'][i])
+    out = drmmot(x0, Cost, distributions ,max_iters=max_iter, step=ep, compute_r_primal=True, eps_abs=1e-15, verbose=False, print_every=100)
+    print(out['objective_values'])
+
 
 if __name__ == '__main__':
     main()

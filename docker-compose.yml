@@ -1,0 +1,14 @@
+services:
+  cuda_env:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./:/ws
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    devices:
+      - nvidia.com/gpu=all
+    command: bash /ws/autorun.sh
+
+

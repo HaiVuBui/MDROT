@@ -1,5 +1,5 @@
 import torch
-import jax.numpy as jnp
+import jax.numpy as np
 import numpy as np
 
 list_of_list = [[1,2,3,4],[50,60,70,80,90],[1000,2000,3000,4000]]
@@ -9,7 +9,7 @@ def tensor_sum(list_of_lists):
     shape = tuple(len(lst) for lst in list_of_lists)
     for lis in list_of_lists:
         print(len(lis))
-    tensor = jnp.zeros(shape)
+    tensor = np.zeros(shape)
     m = len(shape)
     print("m:",m)
     idxes = list(range(len(shape)))

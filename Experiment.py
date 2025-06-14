@@ -5,13 +5,14 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__),'src'))
 
 import argparse
-from src.DRMMOT import Mdrot_gpu
+from src.DRMMOT import drmmot
 from prepare_data import prepare_input
-from src.algos import solve_multi_sinkhorn, solve_rrsinkhorn, solve_multi_greenkhorn, solve_pd_aam
+# from MOT_models_GPU import solve_multi_sinkhorn, solve_rrsinkhorn, solve_multi_greenkhorn, solve_pd_aam
 
 def single_experiment(alg,size,max_iter,ep): 
     exp_set=range(0,10)
     Result={}
+    n = len(exp_set)
     for exp_idx in exp_set:
         # Define the data folder and parameters
         data_folder = f'data/size{size}/seed20/'
@@ -27,28 +28,28 @@ def single_experiment(alg,size,max_iter,ep):
 
         
         if alg == 'M':
-            temp = Mdrot_gpu(x0, Cost, p, q, s,opt=X ,max_iters=max_iter, step=ep, compute_r_primal=True, eps_abs=1e-15, verbose=False, print_every=100)
-        elif alg == 'A':
-            temp = solve_multi_sinkhorn(Cost, target_mu, epsilon=ep, max_iter=max_iter)
-        elif alg == 'B':
-            temp = solve_rrsinkhorn(Cost, target_mu,  epsilon=ep, max_iter=max_iter)
-        elif alg == 'C':
-            temp = solve_multi_greenkhorn(Cost, target_mu, epsilon=ep, max_iter=max_iter)
-        elif alg == 'D':
-            temp = solve_pd_aam(Cost,target_mu,epsilon0=ep, max_iterate=max_iter)
+            temp = drmmot(x0, Cost, p, q, s,opt=X ,max_iters=max_iter, step=ep, compute_r_primal=True, eps_abs=1e-15, verbose=False, print_every=100)
+        # elif alg == 'A':
+        #     temp = solve_multi_sinkhorn(Cost, target_mu,opt=X, epsilon=ep, max_iter=max_iter)
+        # elif alg == 'B':
+        #     temp = solve_rrsinkhorn(Cost, target_mu, opt=X, epsilon=ep, max_iter=max_iter)
+        # elif alg == 'C':
+        #     temp = solve_multi_greenkhorn(Cost, target_mu,opt=X, epsilon=ep, max_iter=max_iter)
+        # elif alg == 'D':
+        #     temp = solve_pd_aam(Cost,target_mu,opt=X ,epsilon0=ep, max_iterate=max_iter)
 
         if exp_idx==0:
-            for key in ['Obj_list', 'runtime', 'distance']:
-                if key=='Obj)list':
-                    Result[key]=abs(temp[key]-opt)
+            for key in ['objective_values', 'computational_time', 'distances']:
+                if key=='objective_values':
+                    Result[key]=abs(temp[key]-opt)/n
                 else:
-                    Result[key]=temp[key]
+                    Result[key]=temp[key]/n
         else:
-            for key in ['Obj_list', 'runtime', 'distance']:
-                if key=='Obj_list':
-                    Result[key]+=abs(temp[key]-opt)
+            for key in ['objective_values', 'computational_time', 'distances']:
+                if key=='objective_values':
+                    Result[key]+=abs(temp[key]-opt)/n
                 else:
-                    Result[key]+=temp[key]
+                    Result[key]+=temp[key]/n
     return Result
 
 def main(max_iter,size):
@@ -56,10 +57,10 @@ def main(max_iter,size):
     os.makedirs(output_folder, exist_ok=True)
 
     algs={
-        'M': [ 1e-4 ] ,
-        'A':[ 1 ] ,
-        'B':[ 1 ],
-        'C':[ 20 ]
+        'M': [ 1e-5 ] ,
+        # 'A':[ 1 ] ,
+        # 'B':[ 1 ],
+        # 'C':[ 20 ]
           }  
     # Plot and save the image
 
@@ -71,8 +72,8 @@ def main(max_iter,size):
 
             #check if computed 
             is_necessary = False
-            for key in ['Obj_list', 'runtime', 'distance']:
-                npy_filename = os.path.join(save_folder, f'{key}_{ep}.npy')
+            for key in ['objective_values', 'computational_time', 'distances']:
+                npy_filename = os.path.join(save_folder, f'{alg}_{key}_{ep}.npy')
                 if not os.path.exists(npy_filename):
                     is_necessary = True
             if not is_necessary:
@@ -86,8 +87,8 @@ def main(max_iter,size):
         
             # Save the Result to .npy files
             save_folder = output_folder + f'/{alg}'
-            for key in ['Obj_list', 'runtime', 'distance']:
-                npy_filename = os.path.join(save_folder, f'{key}{ep}.npy')
+            for key in ['objective_values', 'computational_time', 'distances']:
+                npy_filename = os.path.join(save_folder, f'{key}_{ep}.npy')
                 if not os.path.exists(npy_filename):
                     np.save(npy_filename, Result[f'{key}'])
 
